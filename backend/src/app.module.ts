@@ -28,8 +28,10 @@ import { RolesGuard } from './auth/guards/roles.guard';
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        // DEV ONLY — never true in production, switch to migrations before deploying
-        synchronize: true,
+        // Defaults to false (safe for production). Set DB_SYNCHRONIZE=true
+        // only for a first deploy against a brand-new empty database, then
+        // flip it back off — this repo has no migration files yet.
+        synchronize: config.get<string>('DB_SYNCHRONIZE', 'false') === 'true',
         logging: process.env.NODE_ENV === 'development',
       }),
     }),
