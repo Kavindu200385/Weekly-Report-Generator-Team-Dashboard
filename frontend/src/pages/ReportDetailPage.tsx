@@ -51,7 +51,7 @@ export default function ReportDetailPage() {
     <div style={{ flex: 1, overflow: "auto" }}>
       <PageHeader title={`Report — ${report.weekStartDate}`} sub={`${report.user?.name ?? "?"} · ${report.project?.name ?? "?"}`}
         action={<div style={{ display: "flex", gap: 8 }}><StatusBadge status={report.status} /><Btn variant="ghost" size="sm" onClick={() => navigate(isManager ? "/dashboard" : "/report-history")}>← Back</Btn></div>} />
-      <div style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className="page-pad" style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 16 }}>
         {content && <ReportBody content={content} projects={projects.map(p => ({ id: p.id, name: p.name }))} readOnly latestReview={latestReview} />}
 
         <Panel>
@@ -61,18 +61,20 @@ export default function ReportDetailPage() {
           </div>
           {vOpen && (
             <div>
+              <div className="table-wrap">
               <table className="dt">
                 <thead><tr><th>Submitted</th><th>Review comment</th><th></th></tr></thead>
                 <tbody>
                   {versions.map(v => (
                     <tr key={v.id}>
-                      <td><Sm muted>{v.submittedAt?.slice(0,16).replace("T"," ") ?? "—"}</Sm></td>
-                      <td style={{ color: "var(--text-2)" }}>{v.reviews.at(-1)?.comment ?? <span style={{ color: "var(--text-3)" }}>No review yet</span>}</td>
-                      <td><button onClick={() => setSelVersionId(selVersionId === v.id ? null : v.id)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit", padding: 0 }}>{selVersionId === v.id ? "← Current" : "View"}</button></td>
+                      <td data-label="Submitted"><Sm muted>{v.submittedAt?.slice(0,16).replace("T"," ") ?? "—"}</Sm></td>
+                      <td data-label="Review comment" style={{ color: "var(--text-2)" }}>{v.reviews.at(-1)?.comment ?? <span style={{ color: "var(--text-3)" }}>No review yet</span>}</td>
+                      <td data-label=""><button onClick={() => setSelVersionId(selVersionId === v.id ? null : v.id)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit", padding: 0 }}>{selVersionId === v.id ? "← Current" : "View"}</button></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+              </div>
               {selVersionId !== null && (
                 <div style={{ padding: "10px 18px", borderTop: "1px solid var(--border)", fontSize: 12, color: "var(--text-3)" }}>
                   Viewing version {versions.find(v => v.id === selVersionId)?.versionNumber} of {versions.length}.{" "}

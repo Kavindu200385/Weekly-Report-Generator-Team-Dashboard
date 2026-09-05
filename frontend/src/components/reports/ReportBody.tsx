@@ -5,6 +5,8 @@ import { Btn } from "@/components/ui/Btn";
 import { TaskTable, type ApiTaskRow } from "@/components/reports/TaskTable";
 import { RepList, type RepListItem } from "@/components/reports/RepList";
 import { uid } from "@/utils/id";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { MQ } from "@/lib/breakpoints";
 
 export interface HoursRow { id: string; taskType: string; hours: number }
 
@@ -43,6 +45,8 @@ export function ReportBody({ content, projects, readOnly, onChange, latestReview
   latestReview?: LatestReview | null;
 }) {
   const proj = projects.find(p => p.id === content.projectId);
+  const isMobile = useMediaQuery(MQ.mobile);
+  const colStyle: React.CSSProperties = { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -69,7 +73,7 @@ export function ReportBody({ content, projects, readOnly, onChange, latestReview
 
       <Panel>
         <PH>Report metadata</PH>
-        <div style={{ padding: "16px 18px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div style={{ padding: "16px 18px", ...colStyle }}>
           <div>
             <FieldLabel>Week starting</FieldLabel>
             {readOnly ? <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-1)" }}>{content.weekStartDate} – {content.weekEndDate}</span>
@@ -96,7 +100,7 @@ export function ReportBody({ content, projects, readOnly, onChange, latestReview
         </div>
       </Panel>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div style={colStyle}>
         <Panel>
           <PH>Blockers</PH>
           <div style={{ padding: "12px 18px" }}>
@@ -121,7 +125,7 @@ export function ReportBody({ content, projects, readOnly, onChange, latestReview
             <div style={{ paddingBottom: 14 }}>
               {content.hoursByType.length === 0 && readOnly && <span style={{ color: "var(--text-3)", fontSize: 13 }}>None reported</span>}
               {content.hoursByType.map(h => (
-                <div key={h.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                <div key={h.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
                   {readOnly ? (
                     <span style={{ fontSize: 13, color: "var(--text-2)" }}>{h.taskType}: <b style={{ color: "var(--text-1)" }}>{h.hours}h</b></span>
                   ) : (

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { MQ } from "@/lib/breakpoints";
 
 const SLIDES = [
   { url: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080", headline: "Track team progress weekly", sub: "Submit structured reports in minutes — never miss what matters." },
@@ -17,6 +19,7 @@ const FEATURES = [
 export function AuthLayout({ mode, children }: { mode: "login" | "register"; children: React.ReactNode }) {
   const [photoIdx, setPhotoIdx] = useState(0);
   const [photoVisible, setPhotoVisible] = useState(true);
+  const isMobile = useMediaQuery(MQ.mobile);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -69,11 +72,11 @@ export function AuthLayout({ mode, children }: { mode: "login" | "register"; chi
   );
 
   const formPanel = (
-    <div key="form" style={{ flex: "0 0 45%", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "36px 32px", overflowY: "auto" }}>
+    <div key="form" style={{ flex: isMobile ? "1 1 auto" : "0 0 45%", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: isMobile ? "24px 16px" : "36px 32px", overflowY: "auto" }}>
       <div style={{
         width: "100%", maxWidth: 380, background: "var(--surface)",
         border: "1px solid var(--border)", borderRadius: 20,
-        boxShadow: "var(--shadow-md)", padding: "36px 36px 32px",
+        boxShadow: "var(--shadow-md)", padding: isMobile ? "26px 20px 24px" : "36px 36px 32px",
       }}>
         {children}
       </div>
@@ -81,8 +84,8 @@ export function AuthLayout({ mode, children }: { mode: "login" | "register"; chi
   );
 
   return (
-    <div style={{ height: "100%", display: "flex", overflow: "hidden" }}>
-      {mode === "login" ? <>{photoPanel}{formPanel}</> : <>{formPanel}{photoPanel}</>}
+    <div style={{ height: "100%", display: "flex", overflow: isMobile ? "auto" : "hidden" }}>
+      {isMobile ? formPanel : (mode === "login" ? <>{photoPanel}{formPanel}</> : <>{formPanel}{photoPanel}</>)}
     </div>
   );
 }

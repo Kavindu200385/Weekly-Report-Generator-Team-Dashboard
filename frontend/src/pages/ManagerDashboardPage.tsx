@@ -21,6 +21,8 @@ import { StatusStackedBarChart } from "@/components/dashboard/StatusStackedBarCh
 import { WorkloadBarChart } from "@/components/dashboard/WorkloadBarChart";
 import { TimeTypeBarChart } from "@/components/dashboard/TimeTypeBarChart";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { MQ } from "@/lib/breakpoints";
 
 const PROJECT_COLORS = ["#7C3AED", "#06B6D4", "#8B5CF6", "#94A3B8", "#F59E0B", "#10B981"];
 const TIME_TYPE_COLORS: Record<string, string> = {
@@ -50,6 +52,10 @@ export default function ManagerDashboardPage() {
   const navigate = useNavigate();
   const [week, setWeek] = useState(thisMonday());
   const [activeTab, setActiveTab] = useState<"table" | "blockers" | "achievements">("table");
+  const isMobile = useMediaQuery(MQ.mobile);
+  const isTablet = useMediaQuery(MQ.tablet);
+  const cardCols = isMobile ? 1 : isTablet ? 2 : 4;
+  const chartCols = isMobile || isTablet ? 1 : 2;
 
   const { data: summary } = useDashboardSummary(week);
   const { data: teamStatus = [] } = useTeamStatus(week);
@@ -95,16 +101,16 @@ export default function ManagerDashboardPage() {
           <input className="inp" type="date" value={week} onChange={e => setWeek(e.target.value)} style={{ width: 160 }} />
         </div>
       } />
-      <div style={{ padding: "28px 32px", display: "flex", flexDirection: "column", gap: 24 }}>
+      <div className="page-pad" style={{ padding: isMobile ? "18px 32px" : "28px 32px", display: "flex", flexDirection: "column", gap: isMobile ? 16 : 24 }}>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 18 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${cardCols},1fr)`, gap: 18 }}>
           <MetricCard label="Submitted this week" value={summary?.totalSubmitted ?? 0} sub={`of ${teamStatus.length} members`} tint={TINTS.violet} icon={<MetricIcon d="check" />} />
           <MetricCard label="Compliance rate" value={`${summary?.complianceRate ?? 0}%`} sub="submitted this week" tint={TINTS.green} icon={<MetricIcon d="pct" />} />
           <MetricCard label="Needs correction" value={summary?.needsCorrectionCount ?? 0} sub="awaiting revision" tint={TINTS.amber} icon={<MetricIcon d="warn" />} />
           <MetricCard label="Open blockers" value={summary?.openBlockersCount ?? 0} sub="across all reports" tint={TINTS.red} icon={<MetricIcon d="flag" />} />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${chartCols},1fr)`, gap: 20 }}>
           <div style={{ borderRadius: 12, border: "1px solid var(--border)", overflow: "hidden", background: "var(--surface)" }}>
             <div style={{ padding: "14px 18px", background: "#F8FAFC", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-2)", letterSpacing: ".02em" }}>TASKS COMPLETED — 8-WEEK TREND</span>
@@ -154,24 +160,25 @@ export default function ManagerDashboardPage() {
           </div>
 
           {activeTab === "table" && (
+            <div className="table-wrap">
             <table className="dt">
               <thead><tr><th>Member</th><th>Project</th><th>Status</th><th>Last updated</th><th></th></tr></thead>
               <tbody>
                 {teamReports.map(r => (
                   <tr key={r.id} style={{ cursor: "pointer" }} onClick={() => navigate(`/review/${r.id}`)}>
-                    <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}>{r.user && <Avatar userId={String(r.user.id)} initials={r.user.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)} size={28} />}<span style={{ fontWeight: 700 }}>{r.user?.name}</span></div></td>
-                    <td style={{ color: "var(--text-2)" }}>{r.project?.name}</td>
-                    <td><StatusBadge status={r.status} /></td>
-                    <td><Sm muted>{r.updatedAt.slice(0,16).replace("T"," ")}</Sm></td>
-                    <td><span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 700 }}>Review →</span></td>
+                    <td data-label="Member"><div style={{ display: "flex", alignItems: "center", gap: 9 }}>{r.user && <Avatar userId={String(r.user.id)} initials={r.user.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)} size={28} />}<span style={{ fontWeight: 700 }}>{r.user?.name}</span></div></td>
+                    <td data-label="Project" style={{ color: "var(--text-2)" }}>{r.project?.name}</td>
+                    <td data-label="Status"><StatusBadge status={r.status} /></td>
+                    <td data-label="Last updated"><Sm muted>{r.updatedAt.slice(0,16).replace("T"," ")}</Sm></td>
+                    <td data-label=""><span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 700 }}>Review →</span></td>
                   </tr>
                 ))}
                 {notStarted.map(m => (
                   <tr key={m.userId + "-ns"} style={{ opacity: .7 }}>
-                    <td><div style={{ display: "flex", alignItems: "center", gap: 9 }}><Avatar userId={String(m.userId)} initials={m.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)} size={28} /><span style={{ fontWeight: 700 }}>{m.name}</span></div></td>
-                    <td><span style={{ color: "var(--text-3)", fontSize: 12 }}>—</span></td>
-                    <td><span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, background: "#F8FAFC", color: "#64748B", fontSize: 11, fontWeight: 700 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#CBD5E1", flexShrink: 0 }} />Not submitted</span></td>
-                    <td><span style={{ color: "var(--text-3)", fontSize: 12 }}>—</span></td>
+                    <td data-label="Member"><div style={{ display: "flex", alignItems: "center", gap: 9 }}><Avatar userId={String(m.userId)} initials={m.name.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2)} size={28} /><span style={{ fontWeight: 700 }}>{m.name}</span></div></td>
+                    <td data-label="Project"><span style={{ color: "var(--text-3)", fontSize: 12 }}>—</span></td>
+                    <td data-label="Status"><span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, background: "#F8FAFC", color: "#64748B", fontSize: 11, fontWeight: 700 }}><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#CBD5E1", flexShrink: 0 }} />Not submitted</span></td>
+                    <td data-label="Last updated"><span style={{ color: "var(--text-3)", fontSize: 12 }}>—</span></td>
                     <td></td>
                   </tr>
                 ))}
@@ -180,36 +187,41 @@ export default function ManagerDashboardPage() {
                 )}
               </tbody>
             </table>
+            </div>
           )}
           {activeTab === "blockers" && (
+            <div className="table-wrap">
             <table className="dt">
               <thead><tr><th>Member</th><th>Blocker</th><th>Key</th></tr></thead>
               <tbody>
                 {blockersView.flatMap(m => m.entries.map((e, i) => ({ m, e, i }))).map(({ m, e, i }) => (
                   <tr key={`${m.userId}-${i}`}>
-                    <td style={{ fontWeight: 700 }}>{m.name}</td>
-                    <td style={{ color: "var(--text-2)" }}>{e.description}</td>
-                    <td>{e.isKeyIssue && <span style={{ fontSize: 10, fontWeight: 800, color: "#92400E", background: "#FEF3C7", padding: "2px 8px", borderRadius: 12 }}>KEY</span>}</td>
+                    <td data-label="Member" style={{ fontWeight: 700 }}>{m.name}</td>
+                    <td data-label="Blocker" style={{ color: "var(--text-2)" }}>{e.description}</td>
+                    <td data-label="Key">{e.isKeyIssue && <span style={{ fontSize: 10, fontWeight: 800, color: "#92400E", background: "#FEF3C7", padding: "2px 8px", borderRadius: 12 }}>KEY</span>}</td>
                   </tr>
                 ))}
                 {blockersView.every(m => m.entries.length === 0) && <tr><td colSpan={3} style={{ textAlign: "center", padding: "30px", color: "var(--text-3)" }}>No blockers.</td></tr>}
               </tbody>
             </table>
+            </div>
           )}
           {activeTab === "achievements" && (
+            <div className="table-wrap">
             <table className="dt">
               <thead><tr><th>Member</th><th>Achievement</th><th>Key</th></tr></thead>
               <tbody>
                 {achievementsView.flatMap(m => m.entries.map((e, i) => ({ m, e, i }))).map(({ m, e, i }) => (
                   <tr key={`${m.userId}-${i}`}>
-                    <td style={{ fontWeight: 700 }}>{m.name}</td>
-                    <td style={{ color: "var(--text-2)" }}>{e.description}</td>
-                    <td>{e.isKeyAchievement && <span style={{ fontSize: 10, fontWeight: 800, color: "#065F46", background: "#D1FAE5", padding: "2px 8px", borderRadius: 12 }}>KEY</span>}</td>
+                    <td data-label="Member" style={{ fontWeight: 700 }}>{m.name}</td>
+                    <td data-label="Achievement" style={{ color: "var(--text-2)" }}>{e.description}</td>
+                    <td data-label="Key">{e.isKeyAchievement && <span style={{ fontSize: 10, fontWeight: 800, color: "#065F46", background: "#D1FAE5", padding: "2px 8px", borderRadius: 12 }}>KEY</span>}</td>
                   </tr>
                 ))}
                 {achievementsView.every(m => m.entries.length === 0) && <tr><td colSpan={3} style={{ textAlign: "center", padding: "30px", color: "var(--text-3)" }}>No achievements.</td></tr>}
               </tbody>
             </table>
+            </div>
           )}
         </Panel>
       </div>

@@ -1,6 +1,8 @@
 import { uid } from "@/utils/id";
 import { Sm } from "@/components/ui/Sm";
 import { Btn } from "@/components/ui/Btn";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { MQ } from "@/lib/breakpoints";
 
 export interface ApiTaskRow {
   id: string;
@@ -26,10 +28,77 @@ export function TaskTable({ tasks, onChange, readOnly }: { tasks: ApiTaskRow[]; 
   const up = (id: string, f: keyof ApiTaskRow, v: any) => onChange?.(tasks.map(t => t.id === id ? { ...t, [f]: v } : t));
   const rm = (id: string) => onChange?.(tasks.filter(t => t.id !== id));
   const add = () => onChange?.([...tasks, newTaskRow()]);
+  const isMobile = useMediaQuery(MQ.mobile);
+
+  if (isMobile) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {tasks.map((t, i) => (
+          <div key={t.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 14, background: "var(--surface)", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".04em" }}>Task {i + 1}</span>
+              {!readOnly && <button onClick={() => rm(t.id)} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 20, width: 32, height: 32, lineHeight: 1 }}>×</button>}
+            </div>
+
+            <div>
+              <Sm muted>Task name</Sm>
+              {readOnly ? <div style={{ fontWeight: 600, marginTop: 4 }}>{t.taskName || "—"}</div>
+                : <input className="inp" value={t.taskName} onChange={e => up(t.id, "taskName", e.target.value)} placeholder="Task…" style={{ marginTop: 4, minHeight: 44 }} />}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div>
+                <Sm muted>Priority</Sm>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: PCOL[t.priority] ?? "#94A3B8", flexShrink: 0 }} />
+                  {readOnly ? <Sm>{t.priority}</Sm>
+                    : <select className="sel" value={t.priority} onChange={e => up(t.id, "priority", e.target.value)} style={{ minHeight: 40, width: "100%" }}>{PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}</select>}
+                </div>
+              </div>
+              <div>
+                <Sm muted>Status</Sm>
+                <div style={{ marginTop: 4 }}>
+                  {readOnly ? <Sm>{t.status}</Sm>
+                    : <select className="sel" value={t.status} onChange={e => up(t.id, "status", e.target.value)} style={{ minHeight: 40, width: "100%" }}>{STATUSES.map(s => <option key={s} value={s}>{s}</option>)}</select>}
+                </div>
+              </div>
+              <div>
+                <Sm muted>Plan %</Sm>
+                {readOnly ? <div style={{ marginTop: 4 }}><Sm>{t.plannedPct}%</Sm></div>
+                  : <input className="inp" type="number" min={0} max={100} value={t.plannedPct} onChange={e => up(t.id, "plannedPct", +e.target.value)} style={{ marginTop: 4, minHeight: 44 }} />}
+              </div>
+              <div>
+                <Sm muted>Actual %</Sm>
+                {readOnly ? <div style={{ marginTop: 4 }}><Sm>{t.actualPct}%</Sm></div>
+                  : <input className="inp" type="number" min={0} max={100} value={t.actualPct} onChange={e => up(t.id, "actualPct", +e.target.value)} style={{ marginTop: 4, minHeight: 44 }} />}
+              </div>
+              <div>
+                <Sm muted>Planned (h)</Sm>
+                {readOnly ? <div style={{ marginTop: 4 }}><Sm muted>{t.timePlannedHrs}h</Sm></div>
+                  : <input className="inp" type="number" min={0} step={0.5} value={t.timePlannedHrs} onChange={e => up(t.id, "timePlannedHrs", +e.target.value)} style={{ marginTop: 4, minHeight: 44 }} />}
+              </div>
+              <div>
+                <Sm muted>Spent (h)</Sm>
+                {readOnly ? <div style={{ marginTop: 4 }}><Sm muted>{t.timeSpentHrs}h</Sm></div>
+                  : <input className="inp" type="number" min={0} step={0.5} value={t.timeSpentHrs} onChange={e => up(t.id, "timeSpentHrs", +e.target.value)} style={{ marginTop: 4, minHeight: 44 }} />}
+              </div>
+            </div>
+
+            <div>
+              <Sm muted>Output / deliverable</Sm>
+              {readOnly ? <div style={{ marginTop: 4, color: "var(--text-2)", fontSize: 13 }}>{t.outputDeliverable || "—"}</div>
+                : <input className="inp" value={t.outputDeliverable ?? ""} onChange={e => up(t.id, "outputDeliverable", e.target.value)} placeholder="PR #, link…" style={{ marginTop: 4, minHeight: 44 }} />}
+            </div>
+          </div>
+        ))}
+        {!readOnly && <Btn variant="ghost" onClick={add}>+ Add task</Btn>}
+      </div>
+    );
+  }
 
   return (
     <div>
-      <div style={{ overflowX: "auto" }}>
+      <div className="table-wrap">
         <table className="dt" style={{ minWidth: 860 }}>
           <thead>
             <tr>

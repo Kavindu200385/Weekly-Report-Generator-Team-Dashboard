@@ -25,7 +25,10 @@ function mondayOf(weeksAgo: number): Date {
 }
 
 function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 function addDays(d: Date, days: number): Date {
@@ -85,14 +88,96 @@ async function seed() {
   );
   console.log(`Created ${projects.length} projects.`);
 
-  // --- Reports: last 4 weeks x 5 members, deliberate status mix ---
-  const statusCycle: ReportStatus[] = [
-    ReportStatus.APPROVED,
-    ReportStatus.SUBMITTED,
-    ReportStatus.NEEDS_CORRECTION,
-    ReportStatus.DRAFT,
-    ReportStatus.APPROVED,
-  ];
+  // --- Reports: last 5 weeks x 5 members, per-member performance profiles ---
+  type Profile = {
+    // weighted status distribution for weeks where a report exists
+    statusWeights: [ReportStatus, number][];
+    // probability the member skips the week entirely (no report row)
+    skipChance: number;
+    actualPctRange: [number, number];
+    hoursRange: [number, number]; // total hours/week, split across 3 types
+    blockerChance: number;
+    blockerText: string;
+  };
+
+  const profiles: Record<string, Profile> = {
+    'Maya Chen': {
+      statusWeights: [
+        [ReportStatus.APPROVED, 0.8],
+        [ReportStatus.SUBMITTED, 0.15],
+        [ReportStatus.NEEDS_CORRECTION, 0.05],
+      ],
+      skipChance: 0,
+      actualPctRange: [90, 100],
+      hoursRange: [30, 36],
+      blockerChance: 0.2,
+      blockerText: 'Minor delay waiting on design review sign-off.',
+    },
+    'James Park': {
+      statusWeights: [
+        [ReportStatus.APPROVED, 0.6],
+        [ReportStatus.SUBMITTED, 0.2],
+        [ReportStatus.NEEDS_CORRECTION, 0.2],
+      ],
+      skipChance: 0,
+      actualPctRange: [70, 90],
+      hoursRange: [28, 32],
+      blockerChance: 0.4,
+      blockerText: 'DBA sign-off pending on schema change.',
+    },
+    'Aria Reeves': {
+      statusWeights: [
+        [ReportStatus.APPROVED, 0.4],
+        [ReportStatus.SUBMITTED, 0.3],
+        [ReportStatus.NEEDS_CORRECTION, 0.2],
+        [ReportStatus.DRAFT, 0.1],
+      ],
+      skipChance: 0,
+      actualPctRange: [60, 85],
+      hoursRange: [24, 30],
+      blockerChance: 0.5,
+      blockerText: 'Waiting on third-party API documentation.',
+    },
+    'Diego Torres': {
+      statusWeights: [
+        [ReportStatus.NEEDS_CORRECTION, 0.4],
+        [ReportStatus.SUBMITTED, 0.3],
+        [ReportStatus.APPROVED, 0.2],
+        [ReportStatus.DRAFT, 0.1],
+      ],
+      skipChance: 0.1,
+      actualPctRange: [40, 65],
+      hoursRange: [18, 42],
+      blockerChance: 0.8,
+      blockerText: 'Vendor API rate limits being hit daily.',
+    },
+    'Priya Singh': {
+      statusWeights: [
+        [ReportStatus.APPROVED, 0.3],
+        [ReportStatus.SUBMITTED, 0.2],
+        [ReportStatus.DRAFT, 0.2],
+      ],
+      skipChance: 0.3,
+      actualPctRange: [30, 70],
+      hoursRange: [10, 26],
+      blockerChance: 0.5,
+      blockerText: 'Out part of the week; picking work back up now.',
+    },
+  };
+
+  function weightedStatus(profile: Profile): ReportStatus {
+    const total = profile.statusWeights.reduce((s, [, w]) => s + w, 0);
+    let r = Math.random() * total;
+    for (const [status, w] of profile.statusWeights) {
+      if (r < w) return status;
+      r -= w;
+    }
+    return profile.statusWeights[0][0];
+  }
+
+  function randInt(min: number, max: number): number {
+    return Math.floor(min + Math.random() * (max - min + 1));
+  }
 
   const taskPool = [
     { name: 'API rate limiter', priority: 'high' },
@@ -113,14 +198,22 @@ async function seed() {
   // Track one report to give a two-version correction/resubmit cycle.
   let twoVersionAssigned = false;
 
-  for (let weekIdx = 0; weekIdx < 4; weekIdx++) {
-    const weekStart = mondayOf(3 - weekIdx); // oldest first
+  const WEEKS = 9;
+
+  for (let weekIdx = 0; weekIdx < WEEKS; weekIdx++) {
+    const weekStart = mondayOf(WEEKS - 1 - weekIdx); // oldest first
     const weekEnd = addDays(weekStart, 4); // Mon-Fri
 
     for (let m = 0; m < members.length; m++) {
       const member = members[m];
+      const profile = profiles[member.name];
       const project = projects[(m + weekIdx) % projects.length];
-      const status = statusCycle[(m + weekIdx) % statusCycle.length];
+
+      if (Math.random() < profile.skipChance) {
+        continue; // no report row this week — team-status shows "not_started"
+      }
+
+      const status = weightedStatus(profile);
 
       const report = await reportRepo.save(
         reportRepo.create({
@@ -146,6 +239,7 @@ async function seed() {
         versionCount++;
 
         const tasksForVersion = [taskPool[m % taskPool.length], taskPool[(m + 1) % taskPool.length]];
+        const actualPct = randInt(profile.actualPctRange[0], profile.actualPctRange[1]);
         await taskRepo.save(
           tasksForVersion.map((t, i) =>
             taskRepo.create({
@@ -153,27 +247,26 @@ async function seed() {
               taskName: t.name,
               priority: t.priority,
               plannedPct: 100,
-              actualPct: i === 0 ? 100 : 60 + m * 5,
-              status: i === 0 ? 'done' : 'in-progress',
+              actualPct: i === 0 ? Math.min(100, actualPct + 15) : actualPct,
+              status: actualPct >= 95 ? 'done' : 'in-progress',
               timePlannedHrs: '8.00',
               timeSpentHrs: (7 + i).toFixed(2),
-              outputDeliverable: i === 0 ? 'Merged to main' : null,
+              outputDeliverable: i === 0 && actualPct >= 95 ? 'Merged to main' : null,
             }),
           ),
         );
         taskCount += tasksForVersion.length;
 
-        await blockerRepo.save(
-          blockerRepo.create({
-            reportVersionId: version.id,
-            description:
-              status === ReportStatus.NEEDS_CORRECTION
-                ? 'Vendor API rate limits being hit daily.'
-                : 'DBA sign-off pending on schema change.',
-            isKeyIssue: true,
-          }),
-        );
-        blockerCount++;
+        if (Math.random() < profile.blockerChance) {
+          await blockerRepo.save(
+            blockerRepo.create({
+              reportVersionId: version.id,
+              description: profile.blockerText,
+              isKeyIssue: true,
+            }),
+          );
+          blockerCount++;
+        }
 
         await achievementRepo.save(
           achievementRepo.create({
@@ -184,11 +277,15 @@ async function seed() {
         );
         achievementCount++;
 
+        const totalHours = randInt(profile.hoursRange[0], profile.hoursRange[1]);
+        const devHours = Math.round(totalHours * 0.65);
+        const testHours = Math.round(totalHours * 0.2);
+        const meetingHours = Math.max(1, totalHours - devHours - testHours);
         await hoursRepo.save(
           [
-            { taskType: TaskType.DEVELOPMENT, hours: '24.00' },
-            { taskType: TaskType.TESTING, hours: '6.00' },
-            { taskType: TaskType.MEETINGS, hours: '4.00' },
+            { taskType: TaskType.DEVELOPMENT, hours: devHours.toFixed(2) },
+            { taskType: TaskType.TESTING, hours: testHours.toFixed(2) },
+            { taskType: TaskType.MEETINGS, hours: meetingHours.toFixed(2) },
           ].map((h) =>
             hoursRepo.create({
               reportVersionId: version.id,

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { RobotFace } from "@/components/ui/RobotFace";
 import { useAskAi, useTeamSummary } from "@/hooks/useAiChat";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { MQ } from "@/lib/breakpoints";
 
 function thisMonday(): string {
   const today = new Date();
@@ -22,6 +24,7 @@ export function AIChatWidget() {
   const askAi = useAskAi();
   const teamSummary = useTeamSummary();
   const loading = askAi.isPending || teamSummary.isPending;
+  const isMobile = useMediaQuery(MQ.mobile);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, open]);
 
@@ -53,7 +56,9 @@ export function AIChatWidget() {
     <>
       <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 200 }}>
         {open && (
-          <div style={{ position: "absolute", bottom: 60, right: 0, width: 380, height: 520, background: "#fff", borderRadius: 18, boxShadow: "0 8px 40px rgba(15,23,42,.18)", border: "1px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+          <div style={isMobile
+            ? { position: "fixed", inset: 12, width: "auto", height: "auto", background: "#fff", borderRadius: 18, boxShadow: "0 8px 40px rgba(15,23,42,.18)", border: "1px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden", zIndex: 201 }
+            : { position: "absolute", bottom: 60, right: 0, width: 380, height: 520, background: "#fff", borderRadius: 18, boxShadow: "0 8px 40px rgba(15,23,42,.18)", border: "1px solid var(--border)", display: "flex", flexDirection: "column", overflow: "hidden" }}>
             <div style={{ background: "linear-gradient(135deg,#7C3AED 0%,#5B21B6 100%)", padding: "14px 18px", display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(255,255,255,.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <RobotFace size={26} />
@@ -100,9 +105,9 @@ export function AIChatWidget() {
               <input
                 className="inp" value={input} onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && !e.shiftKey && send()}
-                placeholder="Ask anything…" style={{ flex: 1, fontSize: 13 }}
+                placeholder="Ask anything…" style={{ flex: 1, fontSize: 13, minHeight: 44 }}
               />
-              <button onClick={send} disabled={!input.trim() || loading} style={{ background: "var(--gradient)", border: "none", color: "#fff", borderRadius: 10, padding: "0 16px", cursor: input.trim() ? "pointer" : "not-allowed", opacity: input.trim() ? 1 : .45, fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
+              <button onClick={send} disabled={!input.trim() || loading} style={{ background: "var(--gradient)", border: "none", color: "#fff", borderRadius: 10, padding: "0 16px", minHeight: 44, cursor: input.trim() ? "pointer" : "not-allowed", opacity: input.trim() ? 1 : .45, fontWeight: 700, fontSize: 13, fontFamily: "inherit" }}>
                 Send
               </button>
             </div>

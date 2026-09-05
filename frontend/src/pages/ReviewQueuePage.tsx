@@ -26,8 +26,8 @@ export default function ReviewQueuePage() {
   return (
     <div style={{ flex: 1, overflow: "auto" }}>
       <PageHeader title="Review Queue" sub="Reports awaiting your review action" />
-      <div style={{ padding: "18px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "flex", gap: 12 }}>
+      <div className="page-pad" style={{ padding: "18px 28px", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", borderRadius: 14, background: "#EFF6FF", border: "1px solid #BFDBFE" }}>
             <span style={{ fontSize: 22, fontWeight: 800, color: "#1D4ED8" }}>{submittedCount}</span>
             <div><div style={{ fontSize: 12, fontWeight: 700, color: "#1D4ED8" }}>Awaiting review</div><div style={{ fontSize: 11, color: "#3B82F6" }}>submitted reports</div></div>
@@ -47,6 +47,7 @@ export default function ReviewQueuePage() {
               Sent back {correctionCount > 0 && <span style={{ marginLeft: 6, background: "#F59E0B", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 800 }}>{correctionCount}</span>}
             </button>
           </div>
+          <div className="table-wrap">
           <table className="dt">
             <thead>
               <tr><th>Member</th><th>Week</th><th>Project</th><th>Last updated</th><th>Actions</th></tr>
@@ -54,16 +55,16 @@ export default function ReviewQueuePage() {
             <tbody>
               {queue.map(r => (
                 <tr key={r.id}>
-                  <td>
+                  <td data-label="Member">
                     <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                       {r.user && <Avatar userId={String(r.user.id)} initials={r.user.name.split(" ").map(w => w[0]).join("").toUpperCase().slice(0,2)} size={30} />}
                       <div style={{ fontWeight: 700, fontSize: 13 }}>{r.user?.name}</div>
                     </div>
                   </td>
-                  <td><span style={{ fontWeight: 700 }}>{r.weekStartDate}</span></td>
-                  <td style={{ color: "var(--text-2)" }}>{r.project?.name ?? "—"}</td>
-                  <td><Sm muted>{r.updatedAt.slice(0,16).replace("T"," ")}</Sm></td>
-                  <td>
+                  <td data-label="Week"><span style={{ fontWeight: 700 }}>{r.weekStartDate}</span></td>
+                  <td data-label="Project" style={{ color: "var(--text-2)" }}>{r.project?.name ?? "—"}</td>
+                  <td data-label="Last updated"><Sm muted>{r.updatedAt.slice(0,16).replace("T"," ")}</Sm></td>
+                  <td data-label="Actions">
                     <div style={{ display: "flex", gap: 8 }}>
                       <Btn variant="primary" size="sm" onClick={() => navigate(`/review/${r.id}`)}>Review</Btn>
                       <Btn variant="ghost" size="sm" onClick={() => navigate(`/reports/${r.id}`)}>View</Btn>
@@ -80,6 +81,7 @@ export default function ReviewQueuePage() {
               )}
             </tbody>
           </table>
+          </div>
         </Panel>
       </div>
     </div>

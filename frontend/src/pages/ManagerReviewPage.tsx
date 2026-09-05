@@ -10,6 +10,8 @@ import { FieldLabel } from "@/components/ui/FieldLabel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ReportBody } from "@/components/reports/ReportBody";
 import { getCurrentVersion, versionToContent } from "@/components/reports/reportMapping";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { MQ } from "@/lib/breakpoints";
 
 export default function ManagerReviewPage() {
   const { reportId } = useParams();
@@ -25,6 +27,7 @@ export default function ManagerReviewPage() {
   const [error, setError] = useState<string | null>(null);
 
   const back = () => navigate("/review-queue");
+  const isBelowLg = useMediaQuery(MQ.belowLg);
 
   if (!isManager || !report || !id) return null;
 
@@ -55,11 +58,11 @@ export default function ManagerReviewPage() {
   return (
     <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <PageHeader title={`Review — ${report.user?.name ?? "?"}`} sub={`${report.weekStartDate} · ${report.project?.name ?? "?"}`} action={<Btn variant="ghost" size="sm" onClick={back}>← Back</Btn>} />
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
+      <div style={{ display: "flex", flexDirection: isBelowLg ? "column" : "row", flex: 1, overflow: isBelowLg ? "auto" : "hidden" }}>
+        <div className="page-pad" style={{ flex: 1, overflowY: isBelowLg ? "visible" : "auto", padding: "24px 28px" }}>
           {content && <ReportBody content={content} projects={projects.map(p => ({ id: p.id, name: p.name }))} readOnly />}
         </div>
-        <div style={{ width: 292, flexShrink: 0, background: "#fff", borderLeft: "1px solid var(--border)", padding: "22px 20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 22 }}>
+        <div className="page-pad" style={{ width: isBelowLg ? "100%" : 292, flexShrink: 0, background: "#fff", borderLeft: isBelowLg ? "none" : "1px solid var(--border)", borderTop: isBelowLg ? "1px solid var(--border)" : "none", padding: "22px 20px", overflowY: isBelowLg ? "visible" : "auto", display: "flex", flexDirection: "column", gap: 22 }}>
           <div>
             <div style={{ fontSize: 10, fontWeight: 800, color: "var(--text-3)", textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 10 }}>Current Status</div>
             <StatusBadge status={report.status} />

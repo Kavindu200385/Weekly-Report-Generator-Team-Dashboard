@@ -81,7 +81,7 @@ export default function RegisterPage() {
           {errors.confirmPassword && <span style={{ fontSize: 11, color: "#B91C1C" }}>{errors.confirmPassword.message || "Passwords must match"}</span>}
         </div>
 
-        <div style={{ width: 304, height: 78, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)" }}>
+        <div style={{ width: "100%", maxWidth: 304, height: 78, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)" }}>
           <ReCAPTCHA
             ref={recaptchaRef}
             sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}

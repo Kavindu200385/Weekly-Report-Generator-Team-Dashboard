@@ -85,14 +85,14 @@ export default function MyReportPage() {
   return (
     <div style={{ flex: 1, overflow: "auto" }}>
       <PageHeader title="My Weekly Report" sub={`Week of ${draft.weekStartDate}`} action={
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <StatusBadge status={status} />
           {editable && <><Btn variant="ghost" size="sm" onClick={saveDraft}>Save draft</Btn><Btn variant="primary" size="sm" onClick={submit}>Submit report</Btn></>}
           {saved && <span style={{ fontSize: 12, color: "var(--s-appr)", fontWeight: 700 }}>✓ Saved</span>}
         </div>
       } />
-      {error && <div style={{ margin: "12px 28px 0", padding: "10px 14px", background: "#FEE2E2", color: "#B91C1C", borderRadius: 10, fontSize: 13 }}>{error}</div>}
-      <div style={{ padding: "24px 28px" }}>
+      {error && <div className="page-pad" style={{ margin: "12px 28px 0", padding: "10px 14px", background: "#FEE2E2", color: "#B91C1C", borderRadius: 10, fontSize: 13 }}>{error}</div>}
+      <div className="page-pad" style={{ padding: "24px 28px" }}>
         <ReportBody content={draft} projects={projects.map(p => ({ id: p.id, name: p.name }))} readOnly={!editable} onChange={patch} latestReview={latestReview} />
       </div>
     </div>

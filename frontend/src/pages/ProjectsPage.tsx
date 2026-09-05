@@ -86,21 +86,22 @@ export default function ProjectsPage() {
         </div>
       )}
 
-      <div style={{ padding: "16px 28px 0" }}>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>
-          <input type="checkbox" checked={includeInactive} onChange={e => setIncludeInactive(e.target.checked)} style={{ accentColor: "var(--accent)", width: 15, height: 15 }} />
+      <div className="page-pad" style={{ padding: "16px 28px 0" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--text-2)", minHeight: 44 }}>
+          <input type="checkbox" checked={includeInactive} onChange={e => setIncludeInactive(e.target.checked)} style={{ accentColor: "var(--accent)", width: 18, height: 18 }} />
           Show inactive projects
         </label>
       </div>
 
-      <div style={{ padding: "16px 28px 22px" }}>
+      <div className="page-pad" style={{ padding: "16px 28px 22px" }}>
         <Panel>
+          <div className="table-wrap">
           <table className="dt">
             <thead><tr><th>Project name</th><th>Description</th><th>Status</th><th>Actions</th></tr></thead>
             <tbody>
               {projects.map(p => (
                 <tr key={p.id} style={{ opacity: p.isActive ? 1 : 0.55 }}>
-                  <td>
+                  <td data-label="Project">
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <div style={{ width: 34, height: 34, borderRadius: 10, background: "var(--accent-bg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1.5 6h13v7.5a1 1 0 01-1 1h-11a1 1 0 01-1-1V6z"/><path d="M1.5 6l1.5-3h3.5l1 2.5"/></svg>
@@ -108,9 +109,9 @@ export default function ProjectsPage() {
                       <span style={{ fontWeight: 700 }}>{p.name}</span>
                     </div>
                   </td>
-                  <td style={{ color: "var(--text-2)" }}>{p.description || <span style={{ color: "var(--text-3)" }}>—</span>}</td>
-                  <td><StatusPill isActive={p.isActive} /></td>
-                  <td>
+                  <td data-label="Description" style={{ color: "var(--text-2)" }}>{p.description || <span style={{ color: "var(--text-3)" }}>—</span>}</td>
+                  <td data-label="Status"><StatusPill isActive={p.isActive} /></td>
+                  <td data-label="Actions">
                     <div style={{ display: "flex", gap: 12 }}>
                       {p.isActive ? (
                         <>
@@ -127,6 +128,7 @@ export default function ProjectsPage() {
               {!isLoading && projects.length === 0 && <tr><td colSpan={4} style={{ textAlign: "center", padding: "40px", color: "var(--text-3)" }}>No projects yet.</td></tr>}
             </tbody>
           </table>
+          </div>
         </Panel>
       </div>
 
