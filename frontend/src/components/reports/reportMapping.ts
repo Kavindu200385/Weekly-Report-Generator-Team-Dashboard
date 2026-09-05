@@ -53,6 +53,10 @@ export function contentToUpdateInput(content: ReportContent): UpdateReportInput 
 }
 
 export function getMostRecentReview(report: ApiReportDetail): LatestReview | null {
+  // A review only reflects the report's *current* state while it's sitting
+  // in needs_correction or approved — once resubmitted (back to submitted),
+  // the old review is stale and must not render as if it were still current.
+  if (report.status !== "needs_correction" && report.status !== "approved") return null;
   const all = report.versions.flatMap(v => v.reviews.map(r => ({ ...r })));
   if (!all.length) return null;
   all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

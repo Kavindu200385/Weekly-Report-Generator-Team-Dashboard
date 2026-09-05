@@ -5,6 +5,8 @@ import { client, normalizeApiError } from "@/api/client";
 export interface DashboardSummary {
   totalSubmitted: number;
   complianceRate: number;
+  pendingCount: number;
+  lateCount: number;
   needsCorrectionCount: number;
   openBlockersCount: number;
 }

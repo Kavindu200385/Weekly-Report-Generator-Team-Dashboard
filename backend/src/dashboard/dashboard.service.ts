@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Report, ReportStatus } from '../reports/entities/report.entity';
 import { ReportVersion } from '../reports/entities/report-version.entity';
@@ -24,7 +24,12 @@ export class DashboardService {
   ) {}
 
   async getSummary(week: string) {
-    const totalSubmitted = await this.reportRepo.count({ where: { weekStartDate: week } });
+    // "Submitted" means the report has been through submission at least
+    // once this week — draft (never submitted) must not count, but
+    // needs_correction/approved were submitted and stay counted.
+    const totalSubmitted = await this.reportRepo.count({
+      where: { weekStartDate: week, status: Not(ReportStatus.DRAFT) },
+    });
 
     const activeMemberCount = await this.userRepo.count({
       where: { role: UserRole.MEMBER, isActive: true },
@@ -33,18 +38,30 @@ export class DashboardService {
       ? Math.round((totalSubmitted / activeMemberCount) * 100)
       : 0;
 
+    // Members who haven't submitted are "pending" while the week's window
+    // is still open, and "late" once it has closed (Mon-Fri reporting week).
+    const weekEnd = new Date(`${week}T00:00:00`);
+    weekEnd.setDate(weekEnd.getDate() + 4);
+    const weekHasEnded = new Date() > weekEnd;
+    const notSubmittedCount = Math.max(0, activeMemberCount - totalSubmitted);
+    const pendingCount = weekHasEnded ? 0 : notSubmittedCount;
+    const lateCount = weekHasEnded ? notSubmittedCount : 0;
+
     const needsCorrectionCount = await this.reportRepo.count({
       where: { weekStartDate: week, status: ReportStatus.NEEDS_CORRECTION },
     });
 
+    // "Open" blockers means still-outstanding — once a report is approved
+    // its blockers are resolved for dashboard purposes, so they're excluded.
     const openBlockersCount = await this.blockerRepo
       .createQueryBuilder('blocker')
       .innerJoin('blocker.reportVersion', 'version')
       .innerJoin('version.report', 'report')
       .where('report.weekStartDate = :week', { week })
+      .andWhere('report.status != :approved', { approved: ReportStatus.APPROVED })
       .getCount();
 
-    return { totalSubmitted, complianceRate, needsCorrectionCount, openBlockersCount };
+    return { totalSubmitted, complianceRate, pendingCount, lateCount, needsCorrectionCount, openBlockersCount };
   }
 
   async getTeamStatus(week: string) {

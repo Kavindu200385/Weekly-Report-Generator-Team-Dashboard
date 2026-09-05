@@ -300,7 +300,10 @@ async function seed() {
       };
 
       if (status === ReportStatus.DRAFT) {
-        // No version yet — matches the frontend's "empty shell" draft behavior.
+        // Real reports always have exactly one open (unsubmitted) version —
+        // create() makes it immediately, so a draft with zero versions is a
+        // state the real app can never produce and the editor can't open.
+        await makeVersion(1, false);
         continue;
       }
 
@@ -318,6 +321,9 @@ async function seed() {
         reviewCount++;
 
         await makeVersion(2, true);
+        // submit() always spins up the next open version right away — mirror
+        // that here so this report has one to edit/resubmit, same as v1 did.
+        await makeVersion(3, false);
         twoVersionAssigned = true;
         continue;
       }
@@ -345,6 +351,10 @@ async function seed() {
         );
         reviewCount++;
       }
+
+      // submit() unconditionally creates the next open version at submit
+      // time, before any review happens — every non-draft report needs one.
+      await makeVersion(2, false);
     }
   }
 

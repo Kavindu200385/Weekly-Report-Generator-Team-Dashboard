@@ -2,11 +2,13 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { useProjects } from "@/hooks/useProjects";
-import { useReport } from "@/hooks/useReports";
+import { useReport, useReportVersions, useReportVersion } from "@/hooks/useReports";
 import { useCreateReview, useReportReviews } from "@/hooks/useReviews";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Panel } from "@/components/ui/Panel";
 import { Btn } from "@/components/ui/Btn";
 import { FieldLabel } from "@/components/ui/FieldLabel";
+import { Sm } from "@/components/ui/Sm";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ReportBody } from "@/components/reports/ReportBody";
 import { getCurrentVersion, versionToContent } from "@/components/reports/reportMapping";
@@ -20,18 +22,22 @@ export default function ManagerReviewPage() {
   const { data: projects = [] } = useProjects();
   const navigate = useNavigate();
   const { data: report } = useReport(id);
+  const { data: versions = [] } = useReportVersions(id);
   const { data: reviews = [] } = useReportReviews(id);
   const createReview = useCreateReview();
   const [commentMode, setCommentMode] = useState(false);
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [selVersionId, setSelVersionId] = useState<number | null>(null);
+  const [vOpen, setVOpen] = useState(false);
+  const { data: selectedVersion } = useReportVersion(id, selVersionId);
 
   const back = () => navigate("/review-queue");
   const isBelowLg = useMediaQuery(MQ.belowLg);
 
   if (!isManager || !report || !id) return null;
 
-  const version = getCurrentVersion(report);
+  const version = selectedVersion ?? getCurrentVersion(report);
   const content = version ? versionToContent(report, version) : null;
 
   const approve = async () => {
@@ -59,8 +65,38 @@ export default function ManagerReviewPage() {
     <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       <PageHeader title={`Review — ${report.user?.name ?? "?"}`} sub={`${report.weekStartDate} · ${report.project?.name ?? "?"}`} action={<Btn variant="ghost" size="sm" onClick={back}>← Back</Btn>} />
       <div style={{ display: "flex", flexDirection: isBelowLg ? "column" : "row", flex: 1, overflow: isBelowLg ? "auto" : "hidden" }}>
-        <div className="page-pad" style={{ flex: 1, overflowY: isBelowLg ? "visible" : "auto", padding: "24px 28px" }}>
+        <div className="page-pad" style={{ flex: 1, overflowY: isBelowLg ? "visible" : "auto", padding: "24px 28px", display: "flex", flexDirection: "column", gap: 16 }}>
+          {selVersionId !== null && (
+            <div style={{ borderRadius: 10, padding: "10px 16px", background: "var(--accent-bg)", color: "var(--accent)", fontSize: 12.5, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span>Viewing version {version?.versionNumber} of {versions.length} — not the current version.</span>
+              <button onClick={() => setSelVersionId(null)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 12.5, fontWeight: 700, fontFamily: "inherit" }}>← Back to current</button>
+            </div>
+          )}
           {content && <ReportBody content={content} projects={projects.map(p => ({ id: p.id, name: p.name }))} readOnly />}
+
+          <Panel>
+            <div onClick={() => setVOpen(o => !o)} style={{ display: "flex", alignItems: "center", gap: 8, padding: "13px 18px", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--text-2)" }}>
+              <span style={{ fontSize: 11 }}>{vOpen ? "▾" : "▸"}</span>
+              Version history ({versions.length} version{versions.length !== 1 ? "s" : ""})
+            </div>
+            {vOpen && (
+              <div className="table-wrap">
+                <table className="dt">
+                  <thead><tr><th>Version</th><th>Submitted</th><th>Review comment</th><th></th></tr></thead>
+                  <tbody>
+                    {versions.map(v => (
+                      <tr key={v.id}>
+                        <td data-label="Version"><span style={{ fontWeight: 700 }}>v{v.versionNumber}</span></td>
+                        <td data-label="Submitted"><Sm muted>{v.submittedAt?.slice(0,16).replace("T"," ") ?? "— (open)"}</Sm></td>
+                        <td data-label="Review comment" style={{ color: "var(--text-2)" }}>{v.reviews.at(-1)?.comment ?? <span style={{ color: "var(--text-3)" }}>No review yet</span>}</td>
+                        <td data-label=""><button onClick={() => setSelVersionId(selVersionId === v.id ? null : v.id)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "inherit", padding: 0 }}>{selVersionId === v.id ? "← Current" : "View"}</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
         </div>
         <div className="page-pad" style={{ width: isBelowLg ? "100%" : 292, flexShrink: 0, background: "#fff", borderLeft: isBelowLg ? "none" : "1px solid var(--border)", borderTop: isBelowLg ? "1px solid var(--border)" : "none", padding: "22px 20px", overflowY: isBelowLg ? "visible" : "auto", display: "flex", flexDirection: "column", gap: 22 }}>
           <div>

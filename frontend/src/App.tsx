@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { AuthProvider } from "@/context/AuthContext";
 import { AppProvider, useApp } from "@/context/AppContext";
 import { AppShell } from "@/components/layout/AppShell";
@@ -15,8 +16,6 @@ import ManagerReviewPage from "@/pages/ManagerReviewPage";
 import ReviewQueuePage from "@/pages/ReviewQueuePage";
 import ProjectsPage from "@/pages/ProjectsPage";
 import UserManagementPage from "@/pages/UserManagementPage";
-
-const queryClient = new QueryClient();
 
 function DefaultRedirect() {
   const { isManager } = useApp();

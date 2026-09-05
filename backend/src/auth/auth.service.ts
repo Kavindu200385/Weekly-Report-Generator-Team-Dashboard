@@ -10,6 +10,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { User, UserRole } from '../users/entities/user.entity';
+import { InvitesService } from '../users/invites.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { RecaptchaService } from './recaptcha/recaptcha.service';
@@ -29,6 +30,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
     private readonly recaptchaService: RecaptchaService,
+    private readonly invitesService: InvitesService,
   ) {}
 
   private toSafeUser(user: User) {
@@ -48,7 +50,14 @@ export class AuthService {
       throw new BadRequestException('Human verification failed, please try again.');
     }
 
-    const existing = await this.userRepo.findOne({ where: { email: dto.email } });
+    // An invite pins both the email and the role — the request body's email
+    // is ignored in favor of the invite's, so an invite can't be redeemed
+    // under a different address than the manager actually invited.
+    const invite = dto.inviteToken ? await this.invitesService.findValidByToken(dto.inviteToken) : null;
+    const email = invite ? invite.email : dto.email;
+    const role = invite ? invite.role : UserRole.MEMBER;
+
+    const existing = await this.userRepo.findOne({ where: { email } });
     if (existing) {
       throw new ConflictException('An account with this email already exists.');
     }
@@ -58,11 +67,15 @@ export class AuthService {
     const user = await this.userRepo.save(
       this.userRepo.create({
         name: dto.name,
-        email: dto.email,
+        email,
         passwordHash,
-        role: UserRole.MEMBER, // hardcoded — role is never taken from the request body
+        role,
       }),
     );
+
+    if (invite) {
+      await this.invitesService.markAccepted(invite);
+    }
 
     return { user: this.toSafeUser(user), token: this.signToken(user) };
   }

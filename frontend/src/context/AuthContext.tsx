@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { Role } from "@/types";
 import { TOKEN_STORAGE_KEY } from "@/api/client";
+import { queryClient } from "@/lib/queryClient";
 import {
   login as apiLogin,
   register as apiRegister,
@@ -29,6 +30,7 @@ interface AuthContextValue {
     email: string,
     password: string,
     recaptchaToken: string,
+    inviteToken?: string,
   ) => Promise<AuthUser>;
   logout: () => void;
 }
@@ -59,6 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string, recaptchaToken?: string) => {
     const res = await apiLogin(email, password, recaptchaToken);
+    // A previous account's cached queries (reports, tasks, dashboard data…)
+    // must never bleed into the next session in the same tab.
+    queryClient.clear();
     localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
     setToken(res.token);
     const authUser = toAuthUser(res.user);
@@ -67,8 +72,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (name: string, email: string, password: string, recaptchaToken: string) => {
-      const res = await apiRegister(name, email, password, recaptchaToken);
+    async (name: string, email: string, password: string, recaptchaToken: string, inviteToken?: string) => {
+      const res = await apiRegister(name, email, password, recaptchaToken, inviteToken);
+      queryClient.clear();
       localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
       setToken(res.token);
       const authUser = toAuthUser(res.user);
@@ -79,6 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
+    queryClient.clear();
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     setToken(null);
     setUser(null);

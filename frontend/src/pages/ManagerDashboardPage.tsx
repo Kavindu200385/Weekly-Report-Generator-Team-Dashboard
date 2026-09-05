@@ -10,9 +10,13 @@ import {
   useSectionView,
 } from "@/hooks/useDashboard";
 import { useTeamReports } from "@/hooks/useReviews";
+import { useUsers } from "@/hooks/useUsers";
+import { useProjects } from "@/hooks/useProjects";
+import type { ReportStatus } from "@/api/reports.api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Panel } from "@/components/ui/Panel";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Btn } from "@/components/ui/Btn";
 import { MetricCard, TINTS } from "@/components/ui/MetricCard";
 import { Avatar } from "@/components/ui/Avatar";
 import { Sm } from "@/components/ui/Sm";
@@ -51,7 +55,12 @@ function MetricIcon({ d }: { d: string }) {
 export default function ManagerDashboardPage() {
   const navigate = useNavigate();
   const [week, setWeek] = useState(thisMonday());
+  const [weekEnd, setWeekEnd] = useState(thisMonday());
   const [activeTab, setActiveTab] = useState<"table" | "blockers" | "achievements">("table");
+  const [memberFilter, setMemberFilter] = useState<number | "all">("all");
+  const [projectFilter, setProjectFilter] = useState<number | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<ReportStatus | "not_started" | "all">("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const isMobile = useMediaQuery(MQ.mobile);
   const isTablet = useMediaQuery(MQ.tablet);
   const cardCols = isMobile ? 1 : isTablet ? 2 : 4;
@@ -63,12 +72,25 @@ export default function ManagerDashboardPage() {
   const { data: workload = [] } = useWorkloadByProject(week);
   const { data: timeByType = [] } = useTimeByType(week);
   const { data: activities = [] } = useActivityFeed(10);
-  const { data: teamReportsData } = useTeamReports({ weekStart: week, weekEnd: week, limit: 100 });
+  const { data: members = [] } = useUsers({ role: "member" });
+  const { data: projects = [] } = useProjects();
+  const { data: teamReportsData } = useTeamReports({
+    weekStart: week,
+    weekEnd,
+    limit: 100,
+    ...(memberFilter !== "all" ? { userId: memberFilter } : {}),
+    ...(projectFilter !== "all" ? { projectId: projectFilter } : {}),
+    ...(statusFilter !== "all" && statusFilter !== "not_started" ? { status: statusFilter } : {}),
+  });
   const { data: blockersView = [] } = useSectionView(week, "blockers");
   const { data: achievementsView = [] } = useSectionView(week, "achievements");
 
-  const teamReports = teamReportsData?.data ?? [];
-  const notStarted = teamStatus.filter(m => m.status === "not_started");
+  const teamReports = statusFilter === "not_started" ? [] : (teamReportsData?.data ?? []);
+  let notStarted = teamStatus.filter(m => m.status === "not_started");
+  if (statusFilter !== "all" && statusFilter !== "not_started") notStarted = [];
+  if (memberFilter !== "all") notStarted = notStarted.filter(m => m.userId === memberFilter);
+  const activeFilterCount = [memberFilter, projectFilter, statusFilter].filter(v => v !== "all").length
+    + (weekEnd !== week ? 1 : 0);
 
   const memberStats = teamStatus.map(m => ({
     name: m.name,
@@ -96,16 +118,92 @@ export default function ManagerDashboardPage() {
   return (
     <div style={{ flex: 1, overflow: "auto" }}>
       <PageHeader title="Manager Dashboard" sub={`Week of ${week} · ${teamStatus.length} team members`} action={
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Week starting</span>
-          <input className="inp" type="date" value={week} onChange={e => setWeek(e.target.value)} style={{ width: 160 }} />
-        </div>
+        isMobile ? (
+          <button onClick={() => setFiltersOpen(true)} style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 44, padding: "0 16px", background: "var(--accent-bg)", color: "var(--accent)", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>
+            Filters{activeFilterCount > 0 && <span style={{ background: "var(--accent)", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11 }}>{activeFilterCount}</span>}
+          </button>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>Week starting</span>
+            <input className="inp" type="date" value={week} onChange={e => { setWeek(e.target.value); setWeekEnd(e.target.value); }} style={{ width: 160 }} />
+          </div>
+        )
       } />
+
+      {!isMobile && (
+        <div className="page-pad" style={{ padding: "14px 32px 0", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)" }}>through</span>
+          <input className="inp" type="date" value={weekEnd} onChange={e => setWeekEnd(e.target.value)} style={{ width: 160 }} title="End of date range" />
+          <select className="sel" value={memberFilter} onChange={e => setMemberFilter(e.target.value === "all" ? "all" : Number(e.target.value))}>
+            <option value="all">All members</option>
+            {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+          <select className="sel" value={projectFilter} onChange={e => setProjectFilter(e.target.value === "all" ? "all" : Number(e.target.value))}>
+            <option value="all">All projects</option>
+            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <select className="sel" value={statusFilter} onChange={e => setStatusFilter(e.target.value as ReportStatus | "not_started" | "all")}>
+            <option value="all">All statuses</option>
+            <option value="draft">Draft</option>
+            <option value="submitted">Submitted</option>
+            <option value="needs_correction">Needs correction</option>
+            <option value="approved">Approved</option>
+            <option value="not_started">Not yet started</option>
+          </select>
+        </div>
+      )}
+
+      {isMobile && filtersOpen && (
+        <div className="overlay" onClick={() => setFiltersOpen(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: "var(--text-1)" }}>Filters</span>
+              <button onClick={() => setFiltersOpen(false)} style={{ background: "var(--raised)", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 18, width: 32, height: 32, borderRadius: 8 }}>×</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Week starting</div>
+                <input className="inp" type="date" value={week} onChange={e => { setWeek(e.target.value); setWeekEnd(e.target.value); }} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Through</div>
+                <input className="inp" type="date" value={weekEnd} onChange={e => setWeekEnd(e.target.value)} />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Member</div>
+                <select className="sel" style={{ width: "100%" }} value={memberFilter} onChange={e => setMemberFilter(e.target.value === "all" ? "all" : Number(e.target.value))}>
+                  <option value="all">All members</option>
+                  {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Project</div>
+                <select className="sel" style={{ width: "100%" }} value={projectFilter} onChange={e => setProjectFilter(e.target.value === "all" ? "all" : Number(e.target.value))}>
+                  <option value="all">All projects</option>
+                  {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-2)", marginBottom: 6 }}>Status</div>
+                <select className="sel" style={{ width: "100%" }} value={statusFilter} onChange={e => setStatusFilter(e.target.value as ReportStatus | "not_started" | "all")}>
+                  <option value="all">All statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="needs_correction">Needs correction</option>
+                  <option value="approved">Approved</option>
+                  <option value="not_started">Not yet started</option>
+                </select>
+              </div>
+              <Btn variant="primary" onClick={() => setFiltersOpen(false)}>Apply</Btn>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="page-pad" style={{ padding: isMobile ? "18px 32px" : "28px 32px", display: "flex", flexDirection: "column", gap: isMobile ? 16 : 24 }}>
 
         <div style={{ display: "grid", gridTemplateColumns: `repeat(${cardCols},1fr)`, gap: 18 }}>
           <MetricCard label="Submitted this week" value={summary?.totalSubmitted ?? 0} sub={`of ${teamStatus.length} members`} tint={TINTS.violet} icon={<MetricIcon d="check" />} />
-          <MetricCard label="Compliance rate" value={`${summary?.complianceRate ?? 0}%`} sub="submitted this week" tint={TINTS.green} icon={<MetricIcon d="pct" />} />
+          <MetricCard label="Compliance rate" value={`${summary?.complianceRate ?? 0}%`} sub={summary ? `${summary.pendingCount} pending · ${summary.lateCount} late` : "submitted this week"} tint={TINTS.green} icon={<MetricIcon d="pct" />} />
           <MetricCard label="Needs correction" value={summary?.needsCorrectionCount ?? 0} sub="awaiting revision" tint={TINTS.amber} icon={<MetricIcon d="warn" />} />
           <MetricCard label="Open blockers" value={summary?.openBlockersCount ?? 0} sub="across all reports" tint={TINTS.red} icon={<MetricIcon d="flag" />} />
         </div>

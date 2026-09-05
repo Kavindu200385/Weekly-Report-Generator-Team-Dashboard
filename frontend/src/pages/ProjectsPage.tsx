@@ -116,7 +116,7 @@ export default function ProjectsPage() {
                       {p.isActive ? (
                         <>
                           <button onClick={() => openEdit(p)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", padding: 0 }}>Edit</button>
-                          <button onClick={() => setConfirmDeleteId(p.id)} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600, padding: 0 }}>Delete</button>
+                          <button onClick={() => setConfirmDeleteId(p.id)} style={{ background: "none", border: "none", color: "var(--text-3)", cursor: "pointer", fontSize: 13, fontFamily: "inherit", fontWeight: 600, padding: 0 }}>Archive</button>
                         </>
                       ) : (
                         <button onClick={() => reactivate(p)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, fontWeight: 700, fontFamily: "inherit", padding: 0 }}>Reactivate</button>

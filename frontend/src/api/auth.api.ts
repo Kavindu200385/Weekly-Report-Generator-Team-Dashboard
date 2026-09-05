@@ -20,6 +20,7 @@ export async function register(
   email: string,
   password: string,
   recaptchaToken: string,
+  inviteToken?: string,
 ): Promise<AuthResponse> {
   try {
     const { data } = await client.post<AuthResponse>("/auth/register", {
@@ -27,6 +28,7 @@ export async function register(
       email,
       password,
       recaptchaToken,
+      ...(inviteToken ? { inviteToken } : {}),
     });
     return data;
   } catch (err) {
