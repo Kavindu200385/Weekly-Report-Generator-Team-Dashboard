@@ -9,6 +9,11 @@ import {
   type BackendUser,
 } from "@/api/auth.api";
 
+export interface PendingRegistration {
+  pending: true;
+  message: string;
+}
+
 export interface AuthUser {
   id: string;
   name: string;
@@ -31,7 +36,7 @@ interface AuthContextValue {
     password: string,
     recaptchaToken: string,
     inviteToken?: string,
-  ) => Promise<AuthUser>;
+  ) => Promise<AuthUser | PendingRegistration>;
   logout: () => void;
 }
 
@@ -74,6 +79,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const register = useCallback(
     async (name: string, email: string, password: string, recaptchaToken: string, inviteToken?: string) => {
       const res = await apiRegister(name, email, password, recaptchaToken, inviteToken);
+      if ("pending" in res) {
+        // Uninvited self-registration — the account is held for manager
+        // approval, so no session is established yet.
+        return res;
+      }
       queryClient.clear();
       localStorage.setItem(TOKEN_STORAGE_KEY, res.token);
       setToken(res.token);

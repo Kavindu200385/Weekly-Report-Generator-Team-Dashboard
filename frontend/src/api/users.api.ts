@@ -12,6 +12,13 @@ export interface ApiUser {
   createdAt: string;
 }
 
+export interface PendingRegistration {
+  id: number;
+  name: string;
+  email: string;
+  createdAt: string;
+}
+
 export interface ApiUserProfile {
   user: { id: number; name: string; email: string; role: Role };
   stats: { totalReportsSubmitted: number; currentApprovalRate: number; openBlockersCount: number };
@@ -53,6 +60,24 @@ export async function removeUser(id: number): Promise<ApiUser> {
 export async function getUserProfile(id: number): Promise<ApiUserProfile> {
   try {
     const { data } = await client.get<ApiUserProfile>(`/users/${id}/profile`);
+    return data;
+  } catch (err) {
+    throw normalizeApiError(err);
+  }
+}
+
+export async function getPendingRegistrations(): Promise<PendingRegistration[]> {
+  try {
+    const { data } = await client.get<PendingRegistration[]>("/users/pending-registrations");
+    return data;
+  } catch (err) {
+    throw normalizeApiError(err);
+  }
+}
+
+export async function approveRegistration(id: number, role: Role): Promise<ApiUser> {
+  try {
+    const { data } = await client.patch<ApiUser>(`/users/${id}/approve`, { role });
     return data;
   } catch (err) {
     throw normalizeApiError(err);

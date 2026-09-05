@@ -7,6 +7,11 @@ export enum UserRole {
   MANAGER = 'manager',
 }
 
+export enum UserStatus {
+  PENDING = 'pending',
+  ACTIVE = 'active',
+}
+
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -26,6 +31,9 @@ export class User {
 
   @Column({ type: 'boolean', default: true })
   isActive: boolean;
+
+  @Column({ type: 'enum', enum: UserStatus, default: UserStatus.ACTIVE })
+  status: UserStatus;
 
   // Tracks consecutive failed login attempts — used to require reCAPTCHA
   // only after repeated failures, rather than on every login. Reset to 0

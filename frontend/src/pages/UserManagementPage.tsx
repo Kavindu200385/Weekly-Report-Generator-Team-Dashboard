@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import type { Role } from "@/types";
-import { useUsers, useUpdateUserRole, useRemoveUser } from "@/hooks/useUsers";
+import { useUsers, useUpdateUserRole, useRemoveUser, usePendingRegistrations, useApproveRegistration } from "@/hooks/useUsers";
 import { usePendingInvites, useCreateInvite, useRevokeInvite } from "@/hooks/useInvites";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Panel, PH } from "@/components/ui/Panel";
@@ -16,15 +16,18 @@ interface InviteForm { email: string; role: Role; }
 export default function UserManagementPage() {
   const { data: users = [] } = useUsers();
   const { data: invites = [] } = usePendingInvites();
+  const { data: pendingRegistrations = [] } = usePendingRegistrations();
   const updateRole = useUpdateUserRole();
   const removeUser = useRemoveUser();
   const createInvite = useCreateInvite();
   const revokeInvite = useRevokeInvite();
+  const approveRegistration = useApproveRegistration();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [pendingRoles, setPendingRoles] = useState<Record<number, Role>>({});
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<InviteForm>({
     defaultValues: { email: "", role: "member" },
@@ -91,6 +94,50 @@ export default function UserManagementPage() {
         {updateRole.isError && (
           <div style={{ padding: "10px 14px", background: "#FEE2E2", color: "#B91C1C", borderRadius: 10, fontSize: 13 }}>
             {updateRole.error instanceof Error ? updateRole.error.message : "Failed to update role."}
+          </div>
+        )}
+
+        <Panel>
+          <PH>Pending registrations</PH>
+          <div className="table-wrap">
+          <table className="dt">
+            <thead><tr><th>Name</th><th>Email</th><th>Requested</th><th>Role</th><th></th></tr></thead>
+            <tbody>
+              {pendingRegistrations.map(reg => (
+                <tr key={reg.id}>
+                  <td data-label="Name">{reg.name}</td>
+                  <td data-label="Email" style={{ color: "var(--text-2)" }}>{reg.email}</td>
+                  <td data-label="Requested"><Sm muted>{reg.createdAt.slice(0, 10)}</Sm></td>
+                  <td data-label="Role">
+                    <select
+                      className="sel"
+                      value={pendingRoles[reg.id] ?? "member"}
+                      onChange={e => setPendingRoles(prev => ({ ...prev, [reg.id]: e.target.value as Role }))}
+                      style={{ minHeight: 36 }}
+                    >
+                      <option value="member">Member</option>
+                      <option value="manager">Manager</option>
+                    </select>
+                  </td>
+                  <td data-label="">
+                    <Btn
+                      variant="primary"
+                      onClick={() => approveRegistration.mutate({ id: reg.id, role: pendingRoles[reg.id] ?? "member" })}
+                      disabled={approveRegistration.isPending}
+                    >
+                      Approve
+                    </Btn>
+                  </td>
+                </tr>
+              ))}
+              {pendingRegistrations.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", padding: "24px", color: "var(--text-3)" }}>No pending registrations.</td></tr>}
+            </tbody>
+          </table>
+          </div>
+        </Panel>
+        {approveRegistration.isError && (
+          <div style={{ padding: "10px 14px", background: "#FEE2E2", color: "#B91C1C", borderRadius: 10, fontSize: 13 }}>
+            {approveRegistration.error instanceof Error ? approveRegistration.error.message : "Failed to approve registration."}
           </div>
         )}
 

@@ -15,15 +15,20 @@ export interface AuthResponse {
   token: string;
 }
 
+export interface PendingRegistrationResponse {
+  pending: true;
+  message: string;
+}
+
 export async function register(
   name: string,
   email: string,
   password: string,
   recaptchaToken: string,
   inviteToken?: string,
-): Promise<AuthResponse> {
+): Promise<AuthResponse | PendingRegistrationResponse> {
   try {
-    const { data } = await client.post<AuthResponse>("/auth/register", {
+    const { data } = await client.post<AuthResponse | PendingRegistrationResponse>("/auth/register", {
       name,
       email,
       password,

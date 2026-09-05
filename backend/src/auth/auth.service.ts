@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
-import { User, UserRole } from '../users/entities/user.entity';
+import { User, UserRole, UserStatus } from '../users/entities/user.entity';
 import { InvitesService } from '../users/invites.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -21,6 +21,11 @@ const FAILED_ATTEMPTS_THRESHOLD = 3;
 export interface AuthResult {
   user: { id: number; name: string; email: string; role: UserRole };
   token: string;
+}
+
+export interface PendingRegistrationResult {
+  pending: true;
+  message: string;
 }
 
 @Injectable()
@@ -44,7 +49,7 @@ export class AuthService {
     );
   }
 
-  async register(dto: RegisterDto): Promise<AuthResult> {
+  async register(dto: RegisterDto): Promise<AuthResult | PendingRegistrationResult> {
     const humanVerified = await this.recaptchaService.verifyToken(dto.recaptchaToken);
     if (!humanVerified) {
       throw new BadRequestException('Human verification failed, please try again.');
@@ -52,10 +57,13 @@ export class AuthService {
 
     // An invite pins both the email and the role — the request body's email
     // is ignored in favor of the invite's, so an invite can't be redeemed
-    // under a different address than the manager actually invited.
+    // under a different address than the manager actually invited. An
+    // invite also represents manager pre-approval, so it skips the pending
+    // review state that plain self-registration goes through below.
     const invite = dto.inviteToken ? await this.invitesService.findValidByToken(dto.inviteToken) : null;
     const email = invite ? invite.email : dto.email;
     const role = invite ? invite.role : UserRole.MEMBER;
+    const status = invite ? UserStatus.ACTIVE : UserStatus.PENDING;
 
     const existing = await this.userRepo.findOne({ where: { email } });
     if (existing) {
@@ -70,20 +78,26 @@ export class AuthService {
         email,
         passwordHash,
         role,
+        status,
       }),
     );
 
     if (invite) {
       await this.invitesService.markAccepted(invite);
+      return { user: this.toSafeUser(user), token: this.signToken(user) };
     }
 
-    return { user: this.toSafeUser(user), token: this.signToken(user) };
+    return { pending: true, message: 'Registration submitted. Awaiting manager approval.' };
   }
 
   async login(dto: LoginDto): Promise<AuthResult> {
     const user = await this.userRepo.findOne({ where: { email: dto.email } });
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid email or password.');
+    }
+
+    if (user.status === UserStatus.PENDING) {
+      throw new UnauthorizedException('Your account is awaiting manager approval.');
     }
 
     // reCAPTCHA is only demanded once this account has racked up repeated

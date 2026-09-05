@@ -1,10 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { User, UserRole } from './entities/user.entity';
+import { User, UserRole, UserStatus } from './entities/user.entity';
 import { Report, ReportStatus } from '../reports/entities/report.entity';
 import { ReportBlocker } from '../reports/entities/report-blocker.entity';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { ApproveRegistrationDto } from './dto/approve-registration.dto';
 
 const SUBMITTED_OR_LATER = [ReportStatus.SUBMITTED, ReportStatus.NEEDS_CORRECTION, ReportStatus.APPROVED];
 
@@ -21,10 +22,32 @@ export class UsersService {
       where: {
         ...(role ? { role } : {}),
         ...(includeInactive ? {} : { isActive: true }),
+        status: UserStatus.ACTIVE,
       },
       select: ['id', 'name', 'email', 'role', 'isActive', 'createdAt'],
       order: { name: 'ASC' },
     });
+  }
+
+  async findPendingRegistrations() {
+    return this.userRepo.find({
+      where: { status: UserStatus.PENDING },
+      select: ['id', 'name', 'email', 'createdAt'],
+      order: { createdAt: 'ASC' },
+    });
+  }
+
+  async approveRegistration(id: number, dto: ApproveRegistrationDto): Promise<User> {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+    if (user.status !== UserStatus.PENDING) {
+      throw new BadRequestException('This account is not awaiting approval.');
+    }
+    user.role = dto.role;
+    user.status = UserStatus.ACTIVE;
+    return this.userRepo.save(user);
   }
 
   async updateRole(id: number, dto: UpdateUserRoleDto): Promise<User> {
