@@ -17,7 +17,7 @@ interface Message { role: "user" | "ai"; text: string; caption?: string }
 export function AIChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: "ai", text: "Hi! I'm your Sitrep AI assistant. Ask me anything about team reports, blockers, achievements, or submission status — or tap \"Summarize this week\" below." }
+    { role: "ai", text: "Hi! I'm your Sitrep AI assistant. Ask me anything about team reports, blockers, achievements, submission status, pending registrations, pending invites, or the team roster — or tap \"Summarize this week\" below." }
   ]);
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);

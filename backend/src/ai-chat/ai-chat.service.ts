@@ -5,12 +5,14 @@ import Groq from 'groq-sdk';
 import { ConfigService } from '@nestjs/config';
 import { Report } from '../reports/entities/report.entity';
 import { Project } from '../projects/entities/project.entity';
-import { User } from '../users/entities/user.entity';
+import { User, UserStatus } from '../users/entities/user.entity';
+import { Invite, InviteStatus } from '../users/entities/invite.entity';
 import {
   AiUnavailableError,
   GroqLike,
   SYSTEM_PROMPT_ASK,
   SYSTEM_PROMPT_SUMMARY,
+  buildAdminContextString,
   buildContextString,
   callGroq,
   detectEntities,
@@ -35,6 +37,7 @@ export class AiChatService {
     @InjectRepository(Report) private readonly reportRepo: Repository<Report>,
     @InjectRepository(Project) private readonly projectRepo: Repository<Project>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @InjectRepository(Invite) private readonly inviteRepo: Repository<Invite>,
     private readonly config: ConfigService,
     @Optional() groqClient?: GroqLike,
   ) {
@@ -66,6 +69,21 @@ export class AiChatService {
       reportCount: reports.length,
       description: `${reports.length} report${reports.length !== 1 ? 's' : ''} ${scopeDescription}`,
     };
+  }
+
+  private async buildAdminContext(): Promise<string> {
+    const [pendingRegistrations, pendingInvites, activeUsers] = await Promise.all([
+      this.userRepo.find({ where: { status: UserStatus.PENDING }, order: { createdAt: 'ASC' } }),
+      this.inviteRepo.find({ where: { status: InviteStatus.PENDING }, order: { createdAt: 'DESC' } }),
+      this.userRepo.find({ where: { status: UserStatus.ACTIVE, isActive: true } }),
+    ]);
+
+    const rosterByRole: Record<string, number> = {};
+    for (const u of activeUsers) {
+      rosterByRole[u.role] = (rosterByRole[u.role] ?? 0) + 1;
+    }
+
+    return buildAdminContextString({ pendingRegistrations, pendingInvites, rosterByRole });
   }
 
   private async callModel(systemPrompt: string, userPrompt: string): Promise<string> {
@@ -106,12 +124,16 @@ export class AiChatService {
     scopeParts.push(matchedProject ? `for project ${matchedProject.name}` : 'across all projects');
     if (matchedUser) scopeParts.push(`(${matchedUser.name} only)`);
 
-    const { contextString, description } = await this.buildContext(
-      { projectId: matchedProject?.id, userId: matchedUser?.id, weekStart, weekEnd },
-      scopeParts.join(' '),
-    );
+    const [{ contextString, description }, adminContextString] = await Promise.all([
+      this.buildContext(
+        { projectId: matchedProject?.id, userId: matchedUser?.id, weekStart, weekEnd },
+        scopeParts.join(' '),
+      ),
+      this.buildAdminContext(),
+    ]);
 
-    const answer = await this.callModel(SYSTEM_PROMPT_ASK, `Context:\n${contextString}\n\nQuestion: ${question}`);
+    const fullContext = `=== Reports ===\n${contextString}\n\n=== Team & Admin State ===\n${adminContextString}`;
+    const answer = await this.callModel(SYSTEM_PROMPT_ASK, `Context:\n${fullContext}\n\nQuestion: ${question}`);
 
     return { answer, contextUsed: description };
   }

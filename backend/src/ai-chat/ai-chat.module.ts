@@ -7,6 +7,7 @@ import { ReportBlocker } from '../reports/entities/report-blocker.entity';
 import { ReportAchievement } from '../reports/entities/report-achievement.entity';
 import { Project } from '../projects/entities/project.entity';
 import { User } from '../users/entities/user.entity';
+import { Invite } from '../users/entities/invite.entity';
 import { AiChatController } from './ai-chat.controller';
 import { AiChatService } from './ai-chat.service';
 
@@ -20,6 +21,7 @@ import { AiChatService } from './ai-chat.service';
       ReportAchievement,
       Project,
       User,
+      Invite,
     ]),
   ],
   controllers: [AiChatController],

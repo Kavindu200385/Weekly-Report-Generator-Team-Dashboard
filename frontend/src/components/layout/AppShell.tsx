@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Navigate, Outlet } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useApp } from "@/context/AppContext";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileTopBar } from "@/components/layout/MobileTopBar";
@@ -12,6 +12,12 @@ export function AppShell() {
   const { loading, me, isManager, logout } = useApp();
   const isMobile = useMediaQuery(MQ.mobile);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [location.pathname]);
 
   if (loading) return null;
   if (!me) return <Navigate to="/login" replace />;
@@ -22,7 +28,7 @@ export function AppShell() {
       {isMobile && drawerOpen && (
         <MobileDrawer isManager={isManager} me={me} onLogout={logout} onClose={() => setDrawerOpen(false)} />
       )}
-      <div style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <div ref={scrollRef} style={{ flex: 1, overflow: "auto", display: "flex", flexDirection: "column", minWidth: 0 }}>
         <Outlet />
       </div>
       {isManager && <AIChatWidget />}

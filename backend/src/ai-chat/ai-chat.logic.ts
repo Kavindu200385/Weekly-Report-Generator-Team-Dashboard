@@ -46,6 +46,53 @@ export function buildContextString(reports: ReportLike[]): string {
   return reports.map(formatReportLine).join('\n');
 }
 
+export interface PendingRegistrationLike {
+  name: string;
+  email: string;
+  createdAt: Date | string;
+}
+
+export interface PendingInviteLike {
+  email: string;
+  role: string;
+  expiresAt: Date | string;
+}
+
+export interface AdminContextInput {
+  pendingRegistrations: PendingRegistrationLike[];
+  pendingInvites: PendingInviteLike[];
+  rosterByRole: Record<string, number>;
+}
+
+function toDateStr(d: Date | string): string {
+  return (typeof d === 'string' ? d : d.toISOString()).slice(0, 10);
+}
+
+export function buildAdminContextString({ pendingRegistrations, pendingInvites, rosterByRole }: AdminContextInput): string {
+  const registrationsLine = pendingRegistrations.length
+    ? pendingRegistrations.map((r) => `- ${r.name} (${r.email}), requested ${toDateStr(r.createdAt)}`).join('\n')
+    : 'None.';
+
+  const invitesLine = pendingInvites.length
+    ? pendingInvites.map((i) => `- ${i.email} invited as ${i.role}, expires ${toDateStr(i.expiresAt)}`).join('\n')
+    : 'None.';
+
+  const rosterEntries = Object.entries(rosterByRole);
+  const rosterLine = rosterEntries.length
+    ? rosterEntries.map(([role, count]) => `${count} ${role}${count !== 1 ? 's' : ''}`).join(', ')
+    : 'No active users.';
+
+  return [
+    `Pending registrations awaiting manager approval (${pendingRegistrations.length}):`,
+    registrationsLine,
+    '',
+    `Pending invites not yet redeemed (${pendingInvites.length}):`,
+    invitesLine,
+    '',
+    `Active team roster: ${rosterLine}.`,
+  ].join('\n');
+}
+
 export function mondayOf(weeksAgo: number): string {
   const now = new Date();
   const day = now.getDay();
@@ -92,7 +139,7 @@ export async function callGroq(
 }
 
 export const SYSTEM_PROMPT_ASK =
-  "You are an assistant for a team manager reviewing weekly work reports. Answer based ONLY on the report data provided in the context. If the data doesn't contain enough information to answer, say so honestly rather than guessing or inventing details. Be concise and specific — reference actual task names, blockers, or people mentioned in the context when relevant.";
+  "You are an assistant for a team manager reviewing weekly work reports and team administration. The context has two sections: 'Reports' (weekly report data — tasks, blockers, achievements, submission status) and 'Team & Admin State' (pending registrations awaiting approval, pending invites not yet redeemed, and the active team roster by role). Answer based ONLY on the data provided in the context, using whichever section is relevant to the question. If the data doesn't contain enough information to answer, say so honestly rather than guessing or inventing details. Be concise and specific — reference actual names, task names, blockers, or counts mentioned in the context when relevant.";
 
 export const SYSTEM_PROMPT_SUMMARY =
   "You are summarizing a team's weekly work reports for their manager. Produce a short structured summary with exactly three sections: 'Completed Work' (bullet points of what got done, grouped by project if useful), 'Recurring Blockers' (any blocker themes that appear more than once, or notable individual blockers), and 'Workload Notes' (call out any team member who appears significantly over or under-loaded compared to others this week, based on task count or hours if available). Base this ONLY on the provided report data.";

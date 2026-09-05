@@ -55,7 +55,7 @@ describe('Auth (e2e, over HTTP)', () => {
     }
   });
 
-  it('registers a new user with a bypassed recaptcha token', async () => {
+  it('registers a new user with a bypassed recaptcha token, pending manager approval', async () => {
     const res = await request(BASE_URL)
       .post('/auth/register')
       .send({
@@ -66,9 +66,37 @@ describe('Auth (e2e, over HTTP)', () => {
       })
       .expect(201);
 
-    expect(res.body.token).toBeDefined();
-    expect(res.body.user).toMatchObject({ email, role: 'member' });
-    expect(res.body.user.passwordHash).toBeUndefined();
+    // Uninvited self-registration no longer logs the user in immediately —
+    // it's held pending until a manager approves it (see AuthService.register).
+    expect(res.body).toEqual({ pending: true, message: expect.any(String) });
+  });
+
+  it('cannot log in while the registration is still pending manager approval', async () => {
+    await request(BASE_URL)
+      .post('/auth/login')
+      .send({ email, password, recaptchaToken: 'bypass-test-token' })
+      .expect(401);
+  });
+
+  it('logs in once a manager approves the pending registration', async () => {
+    const managerLogin = await request(BASE_URL)
+      .post('/auth/login')
+      .send({ email: 'manager@sitrep.test', password: 'Password123!', recaptchaToken: 'bypass-test-token' })
+      .expect(200);
+    const managerToken = managerLogin.body.token;
+
+    const pending = await request(BASE_URL)
+      .get('/users/pending-registrations')
+      .set('Authorization', `Bearer ${managerToken}`)
+      .expect(200);
+    const pendingUser = pending.body.find((u: { email: string }) => u.email === email);
+    expect(pendingUser).toBeDefined();
+
+    await request(BASE_URL)
+      .patch(`/users/${pendingUser.id}/approve`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ role: 'member' })
+      .expect(200);
   });
 
   it('logs in with the same credentials', async () => {

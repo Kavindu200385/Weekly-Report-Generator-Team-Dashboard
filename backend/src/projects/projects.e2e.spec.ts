@@ -32,14 +32,6 @@ function waitForHealth(timeoutMs: number): Promise<void> {
   });
 }
 
-async function registerMember(email: string): Promise<string> {
-  const res = await request(BASE_URL)
-    .post('/auth/register')
-    .send({ name: 'E2E member', email, password: 'Password123!', recaptchaToken: 'bypass-test-token' })
-    .expect(201);
-  return res.body.token;
-}
-
 async function loginSeededManager(): Promise<string> {
   // register() always creates a "member" — to test manager-only routes we
   // use the seeded manager@sitrep.test account instead of trying to
@@ -49,6 +41,40 @@ async function loginSeededManager(): Promise<string> {
     .send({ email: 'manager@sitrep.test', password: 'Password123!', recaptchaToken: 'bypass-test-token' })
     .expect(200);
   return res.body.token;
+}
+
+// Uninvited self-registration now lands the account pending manager
+// approval, with no token (see AuthService.register) — approve it via the
+// seeded manager before logging in, so this helper keeps returning a
+// ready-to-use member token like it always did.
+async function registerMember(email: string): Promise<string> {
+  await request(BASE_URL)
+    .post('/auth/register')
+    .send({ name: 'E2E member', email, password: 'Password123!', recaptchaToken: 'bypass-test-token' })
+    .expect(201);
+
+  const managerToken = await loginSeededManager();
+
+  const pending = await request(BASE_URL)
+    .get('/users/pending-registrations')
+    .set('Authorization', `Bearer ${managerToken}`)
+    .expect(200);
+  const pendingUser = pending.body.find((u: { email: string }) => u.email === email);
+  if (!pendingUser) {
+    throw new Error(`Expected a pending registration for ${email}, found none.`);
+  }
+
+  await request(BASE_URL)
+    .patch(`/users/${pendingUser.id}/approve`)
+    .set('Authorization', `Bearer ${managerToken}`)
+    .send({ role: 'member' })
+    .expect(200);
+
+  const login = await request(BASE_URL)
+    .post('/auth/login')
+    .send({ email, password: 'Password123!', recaptchaToken: 'bypass-test-token' })
+    .expect(200);
+  return login.body.token;
 }
 
 describe('Projects (e2e, over HTTP)', () => {
