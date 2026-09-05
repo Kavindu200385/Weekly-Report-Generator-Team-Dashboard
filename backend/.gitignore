@@ -1,0 +1,16 @@
+# compiled output
+/dist
+/node_modules
+
+# env
+.env
+.env.*.local
+
+# logs
+*.log
+
+# coverage
+/coverage
+
+# misc
+.DS_Store
