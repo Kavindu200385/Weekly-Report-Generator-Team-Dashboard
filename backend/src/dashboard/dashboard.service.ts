@@ -23,6 +23,18 @@ export class DashboardService {
     @InjectRepository(ReportReview) private readonly reviewRepo: Repository<ReportReview>,
   ) {}
 
+  // Every submit() call snapshots a new ReportVersion and carries the just-
+  // submitted content forward into a fresh open version for further editing
+  // (see ReportsService.submit) — so a report that's been revised and
+  // resubmitted ends up with multiple ReportVersion rows carrying duplicate
+  // task/blocker/achievement/hours content. Aggregation queries must only
+  // look at each report's latest version, or they double-count.
+  private restrictToLatestVersion(qb: import('typeorm').SelectQueryBuilder<any>, versionAlias: string) {
+    return qb.andWhere(
+      `${versionAlias}.versionNumber = (SELECT MAX(v2.versionNumber) FROM report_version v2 WHERE v2.reportId = ${versionAlias}.reportId)`,
+    );
+  }
+
   async getSummary(week: string) {
     // "Submitted" means the report has been through submission at least
     // once this week — draft (never submitted) must not count, but
@@ -53,13 +65,15 @@ export class DashboardService {
 
     // "Open" blockers means still-outstanding — once a report is approved
     // its blockers are resolved for dashboard purposes, so they're excluded.
-    const openBlockersCount = await this.blockerRepo
-      .createQueryBuilder('blocker')
-      .innerJoin('blocker.reportVersion', 'version')
-      .innerJoin('version.report', 'report')
-      .where('report.weekStartDate = :week', { week })
-      .andWhere('report.status != :approved', { approved: ReportStatus.APPROVED })
-      .getCount();
+    const openBlockersCount = await this.restrictToLatestVersion(
+      this.blockerRepo
+        .createQueryBuilder('blocker')
+        .innerJoin('blocker.reportVersion', 'version')
+        .innerJoin('version.report', 'report')
+        .where('report.weekStartDate = :week', { week })
+        .andWhere('report.status != :approved', { approved: ReportStatus.APPROVED }),
+      'version',
+    ).getCount();
 
     return { totalSubmitted, complianceRate, pendingCount, lateCount, needsCorrectionCount, openBlockersCount };
   }
@@ -84,11 +98,14 @@ export class DashboardService {
   }
 
   async getTasksTrend(weeks: number) {
-    const rows = await this.taskRepo
-      .createQueryBuilder('task')
-      .innerJoin('task.reportVersion', 'version')
-      .innerJoin('version.report', 'report')
-      .where("task.status = 'done'")
+    const rows = await this.restrictToLatestVersion(
+      this.taskRepo
+        .createQueryBuilder('task')
+        .innerJoin('task.reportVersion', 'version')
+        .innerJoin('version.report', 'report')
+        .where("task.status = 'done'"),
+      'version',
+    )
       .select('report.weekStartDate', 'week')
       .addSelect('COUNT(*)', 'count')
       .groupBy('report.weekStartDate')
@@ -100,12 +117,15 @@ export class DashboardService {
   }
 
   async getWorkloadByProject(week: string) {
-    const rows = await this.taskRepo
-      .createQueryBuilder('task')
-      .innerJoin('task.reportVersion', 'version')
-      .innerJoin('version.report', 'report')
-      .innerJoin('report.project', 'project')
-      .where('report.weekStartDate = :week', { week })
+    const rows = await this.restrictToLatestVersion(
+      this.taskRepo
+        .createQueryBuilder('task')
+        .innerJoin('task.reportVersion', 'version')
+        .innerJoin('version.report', 'report')
+        .innerJoin('report.project', 'project')
+        .where('report.weekStartDate = :week', { week }),
+      'version',
+    )
       .select('project.id', 'projectId')
       .addSelect('project.name', 'projectName')
       .addSelect('COUNT(task.id)', 'taskCount')
@@ -123,11 +143,14 @@ export class DashboardService {
   }
 
   async getTimeByType(week: string) {
-    const rows = await this.hoursRepo
-      .createQueryBuilder('hours')
-      .innerJoin('hours.reportVersion', 'version')
-      .innerJoin('version.report', 'report')
-      .where('report.weekStartDate = :week', { week })
+    const rows = await this.restrictToLatestVersion(
+      this.hoursRepo
+        .createQueryBuilder('hours')
+        .innerJoin('hours.reportVersion', 'version')
+        .innerJoin('version.report', 'report')
+        .where('report.weekStartDate = :week', { week }),
+      'version',
+    )
       .select('hours.taskType', 'taskType')
       .addSelect('SUM(hours.hours)', 'totalHours')
       .groupBy('hours.taskType')
@@ -176,11 +199,14 @@ export class DashboardService {
     });
 
     if (section === 'blockers') {
-      const rows = await this.blockerRepo
-        .createQueryBuilder('blocker')
-        .innerJoin('blocker.reportVersion', 'version')
-        .innerJoin('version.report', 'report')
-        .where('report.weekStartDate = :week', { week })
+      const rows = await this.restrictToLatestVersion(
+        this.blockerRepo
+          .createQueryBuilder('blocker')
+          .innerJoin('blocker.reportVersion', 'version')
+          .innerJoin('version.report', 'report')
+          .where('report.weekStartDate = :week', { week }),
+        'version',
+      )
         .select('report.userId', 'userId')
         .addSelect('blocker.description', 'description')
         .addSelect('blocker.isKeyIssue', 'isKeyIssue')
@@ -195,11 +221,14 @@ export class DashboardService {
       }));
     }
 
-    const rows = await this.achievementRepo
-      .createQueryBuilder('achievement')
-      .innerJoin('achievement.reportVersion', 'version')
-      .innerJoin('version.report', 'report')
-      .where('report.weekStartDate = :week', { week })
+    const rows = await this.restrictToLatestVersion(
+      this.achievementRepo
+        .createQueryBuilder('achievement')
+        .innerJoin('achievement.reportVersion', 'version')
+        .innerJoin('version.report', 'report')
+        .where('report.weekStartDate = :week', { week }),
+      'version',
+    )
       .select('report.userId', 'userId')
       .addSelect('achievement.description', 'description')
       .addSelect('achievement.isKeyAchievement', 'isKeyAchievement')
