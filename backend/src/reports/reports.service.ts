@@ -170,8 +170,13 @@ export class ReportsService {
 
     if (filter.status) qb.andWhere('report.status = :status', { status: filter.status });
     if (filter.projectId) qb.andWhere('report.projectId = :projectId', { projectId: filter.projectId });
+    // Both bounds compare against weekStartDate — each report belongs to a
+    // single Monday-anchored week, so a "week range" filter means "reports
+    // whose week starts within [weekStart, weekEnd]", not a mix of
+    // weekStartDate/weekEndDate (that previously excluded a single-week
+    // selection entirely, since weekEndDate is always 4 days after weekStart).
     if (filter.weekStart) qb.andWhere('report.weekStartDate >= :weekStart', { weekStart: filter.weekStart });
-    if (filter.weekEnd) qb.andWhere('report.weekEndDate <= :weekEnd', { weekEnd: filter.weekEnd });
+    if (filter.weekEnd) qb.andWhere('report.weekStartDate <= :weekEnd', { weekEnd: filter.weekEnd });
 
     const page = filter.page ?? 1;
     const limit = filter.limit ?? 20;
@@ -194,8 +199,13 @@ export class ReportsService {
     if (filter.status) qb.andWhere('report.status = :status', { status: filter.status });
     if (filter.projectId) qb.andWhere('report.projectId = :projectId', { projectId: filter.projectId });
     if (filter.userId) qb.andWhere('report.userId = :userId', { userId: filter.userId });
+    // Both bounds compare against weekStartDate — each report belongs to a
+    // single Monday-anchored week, so a "week range" filter means "reports
+    // whose week starts within [weekStart, weekEnd]", not a mix of
+    // weekStartDate/weekEndDate (that previously excluded a single-week
+    // selection entirely, since weekEndDate is always 4 days after weekStart).
     if (filter.weekStart) qb.andWhere('report.weekStartDate >= :weekStart', { weekStart: filter.weekStart });
-    if (filter.weekEnd) qb.andWhere('report.weekEndDate <= :weekEnd', { weekEnd: filter.weekEnd });
+    if (filter.weekEnd) qb.andWhere('report.weekStartDate <= :weekEnd', { weekEnd: filter.weekEnd });
 
     const page = filter.page ?? 1;
     const limit = filter.limit ?? 20;

@@ -9,6 +9,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
+    "pretest": "ts-node src/database/seed-test.ts",
     "test": "jest",
     "seed": "ts-node src/database/seed.ts"
   },

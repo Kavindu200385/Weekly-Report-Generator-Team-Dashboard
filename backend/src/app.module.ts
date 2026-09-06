@@ -12,6 +12,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { AiChatModule } from './ai-chat/ai-chat.module';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { testDatabaseName } from './database/data-source';
 
 @Module({
   imports: [
@@ -26,7 +27,10 @@ import { RolesGuard } from './auth/guards/roles.guard';
         port: parseInt(config.get<string>('DB_PORT') ?? '3306', 10),
         username: config.get<string>('DB_USER'),
         password: config.get<string>('DB_PASSWORD'),
-        database: config.get<string>('DB_NAME'),
+        // The e2e suite spawns real `nest start` processes with
+        // NODE_ENV=test — route those at a separate database so running
+        // tests never creates throwaway accounts/reports in real dev data.
+        database: process.env.NODE_ENV === 'test' ? testDatabaseName : config.get<string>('DB_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         // DEV ONLY — never true in production, switch to migrations before deploying
         synchronize: true,
