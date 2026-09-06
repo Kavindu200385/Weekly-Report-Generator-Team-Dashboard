@@ -87,7 +87,12 @@ export default function LoginPage() {
           {errors.email && <span style={{ fontSize: 11, color: "#B91C1C" }}>Email is required</span>}
         </div>
         <div>
-          <FieldLabel>Password</FieldLabel>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <FieldLabel>Password</FieldLabel>
+            <Link to="/forgot-password" style={{ fontSize: 11.5, fontWeight: 600, color: "var(--accent)", textDecoration: "none" }}>
+              Forgot password?
+            </Link>
+          </div>
           <input className="inp" type="password" style={{ background: "var(--raised)" }} {...register("password", { required: true })} />
         </div>
 

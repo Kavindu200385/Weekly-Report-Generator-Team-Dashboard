@@ -41,6 +41,12 @@ export class User {
   @Column({ type: 'int', default: 0 })
   failedLoginAttempts: number;
 
+  // Set when the member clicks "Forgot password?" — flags the account for
+  // a manager to see on the Team Members page. Cleared once a manager
+  // issues a reset link (see PasswordResetsService.createResetToken).
+  @Column({ type: 'datetime', nullable: true, default: null })
+  passwordResetRequestedAt: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

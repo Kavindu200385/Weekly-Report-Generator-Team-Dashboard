@@ -47,7 +47,11 @@ export function useCreateReport() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateReportInput) => createReport(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["reports"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reports"] });
+      // Even a draft changes the dashboard's team-status view ("not_started" -> "draft").
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 
@@ -58,6 +62,7 @@ export function useUpdateReport() {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["reports"] });
       queryClient.invalidateQueries({ queryKey: ["reports", vars.id] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }
@@ -69,6 +74,9 @@ export function useSubmitReport() {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ["reports"] });
       queryClient.invalidateQueries({ queryKey: ["reports", id] });
+      // A new submission changes summary/team-status/workload/section-view
+      // on the dashboard — keep it in sync without requiring a reload.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

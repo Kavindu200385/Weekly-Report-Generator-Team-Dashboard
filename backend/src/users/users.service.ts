@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { User, UserRole, UserStatus } from './entities/user.entity';
 import { Report, ReportStatus } from '../reports/entities/report.entity';
 import { ReportBlocker } from '../reports/entities/report-blocker.entity';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
+import { UpdateUserDetailsDto } from './dto/update-user-details.dto';
 import { ApproveRegistrationDto } from './dto/approve-registration.dto';
 
 const SUBMITTED_OR_LATER = [ReportStatus.SUBMITTED, ReportStatus.NEEDS_CORRECTION, ReportStatus.APPROVED];
@@ -66,6 +67,27 @@ export class UsersService {
     }
 
     user.role = dto.role;
+    return this.userRepo.save(user);
+  }
+
+  async updateDetails(id: number, dto: UpdateUserDetailsDto): Promise<User> {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
+    if (dto.email && dto.email !== user.email) {
+      const existing = await this.userRepo.findOne({ where: { email: dto.email } });
+      if (existing) {
+        throw new ConflictException('An account with this email already exists.');
+      }
+      user.email = dto.email;
+    }
+
+    if (dto.name) {
+      user.name = dto.name;
+    }
+
     return this.userRepo.save(user);
   }
 

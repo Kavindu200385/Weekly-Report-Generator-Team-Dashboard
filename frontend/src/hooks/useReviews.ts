@@ -26,6 +26,10 @@ export function useCreateReview() {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ["reports"] });
       queryClient.invalidateQueries({ queryKey: ["reports", vars.reportId] });
+      // Approving/requesting changes changes the underlying report data the
+      // dashboard's summary/team-status/workload/section-view are derived
+      // from — without this, the dashboard stays stale until a full reload.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

@@ -48,6 +48,15 @@ export async function updateUserRole(id: number, role: Role): Promise<ApiUser> {
   }
 }
 
+export async function updateUserDetails(id: number, details: { name: string; email: string }): Promise<ApiUser> {
+  try {
+    const { data } = await client.patch<ApiUser>(`/users/${id}`, details);
+    return data;
+  } catch (err) {
+    throw normalizeApiError(err);
+  }
+}
+
 export async function removeUser(id: number): Promise<ApiUser> {
   try {
     const { data } = await client.delete<ApiUser>(`/users/${id}`);

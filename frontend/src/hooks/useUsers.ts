@@ -3,6 +3,7 @@ import type { Role } from "@/types";
 import {
   getUsers,
   updateUserRole,
+  updateUserDetails,
   removeUser,
   getUserProfile,
   getPendingRegistrations,
@@ -28,7 +29,24 @@ export function useUpdateUserRole() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, role }: { id: number; role: Role }) => updateUserRole(id, role),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      // Team-status/summary/section-view are keyed off the active-member roster.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+}
+
+export function useUpdateUserDetails() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name, email }: { id: number; name: string; email: string }) =>
+      updateUserDetails(id, { name, email }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      // Names shown on team-status/activity-feed would otherwise stay stale.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 
@@ -36,7 +54,10 @@ export function useRemoveUser() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => removeUser(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 
@@ -51,6 +72,10 @@ export function useApproveRegistration() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, role }: { id: number; role: Role }) => approveRegistration(id, role),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["users"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      // A newly-approved member should show up on team-status right away.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }

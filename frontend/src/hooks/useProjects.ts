@@ -18,7 +18,10 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { name: string; description?: string }) => createProject(input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projects"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 
@@ -27,7 +30,10 @@ export function useUpdateProject() {
   return useMutation({
     mutationFn: ({ id, ...input }: { id: number; name?: string; description?: string; isActive?: boolean }) =>
       updateProject(id, input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projects"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 
@@ -35,7 +41,11 @@ export function useDeleteProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => deleteProject(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["projects"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      // Workload-by-project on the dashboard reflects active projects.
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
   });
 }
 

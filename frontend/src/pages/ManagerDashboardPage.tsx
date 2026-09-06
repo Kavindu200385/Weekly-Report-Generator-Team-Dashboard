@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useDashboardSummary,
   useTeamStatus,
@@ -54,6 +55,23 @@ function MetricIcon({ d }: { d: string }) {
 
 export default function ManagerDashboardPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refreshDashboard = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: ["reports"] }),
+        queryClient.invalidateQueries({ queryKey: ["users"] }),
+        queryClient.invalidateQueries({ queryKey: ["projects"] }),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const [week, setWeek] = useState(thisMonday());
   const [weekEnd, setWeekEnd] = useState(thisMonday());
   const [activeTab, setActiveTab] = useState<"table" | "blockers" | "achievements">("table");
@@ -142,6 +160,17 @@ export default function ManagerDashboardPage() {
             <option value="all">All projects</option>
             {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
+          <button
+            onClick={refreshDashboard}
+            disabled={refreshing}
+            title="Refresh dashboard data"
+            style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 36, padding: "0 12px", background: "var(--raised)", color: "var(--text-2)", border: "1px solid var(--border)", borderRadius: 10, fontWeight: 600, fontSize: 12.5, fontFamily: "inherit", cursor: refreshing ? "default" : "pointer" }}
+          >
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ transform: refreshing ? "rotate(360deg)" : undefined, transition: refreshing ? "transform 0.6s linear" : undefined }}>
+              <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2v3.5H10" />
+            </svg>
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </button>
           <select className="sel" value={statusFilter} onChange={e => setStatusFilter(e.target.value as ReportStatus | "not_started" | "all")}>
             <option value="all">All statuses</option>
             <option value="draft">Draft</option>
