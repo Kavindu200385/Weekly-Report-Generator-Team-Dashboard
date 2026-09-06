@@ -9,12 +9,14 @@ import { Sm } from "@/components/ui/Sm";
 
 export default function ReviewQueuePage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"submitted" | "needs_correction">("submitted");
+  const [tab, setTab] = useState<"submitted" | "needs_correction" | "approved">("submitted");
   const { data: submittedData } = useTeamReports({ status: "submitted", limit: 100 });
   const { data: correctionData } = useTeamReports({ status: "needs_correction", limit: 100 });
+  const { data: approvedData } = useTeamReports({ status: "approved", limit: 100 });
   const submittedCount = submittedData?.total ?? 0;
   const correctionCount = correctionData?.total ?? 0;
-  const queue = (tab === "submitted" ? submittedData : correctionData)?.data ?? [];
+  const approvedCount = approvedData?.total ?? 0;
+  const queue = (tab === "submitted" ? submittedData : tab === "needs_correction" ? correctionData : approvedData)?.data ?? [];
 
   const tabStyle = (t: string): React.CSSProperties => ({
     padding: "10px 18px", borderRadius: 10, border: "none", cursor: "pointer",
@@ -36,6 +38,10 @@ export default function ReviewQueuePage() {
             <span style={{ fontSize: 22, fontWeight: 800, color: "#92400E" }}>{correctionCount}</span>
             <div><div style={{ fontSize: 12, fontWeight: 700, color: "#92400E" }}>Needs correction</div><div style={{ fontSize: 11, color: "#B45309" }}>awaiting re-submission</div></div>
           </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 20px", borderRadius: 14, background: "#D1FAE5", border: "1px solid #A7F3D0" }}>
+            <span style={{ fontSize: 22, fontWeight: 800, color: "#065F46" }}>{approvedCount}</span>
+            <div><div style={{ fontSize: 12, fontWeight: 700, color: "#065F46" }}>Approved</div><div style={{ fontSize: 11, color: "#047857" }}>completed reports</div></div>
+          </div>
         </div>
 
         <Panel>
@@ -45,6 +51,9 @@ export default function ReviewQueuePage() {
             </button>
             <button style={tabStyle("needs_correction")} onClick={() => setTab("needs_correction")}>
               Sent back {correctionCount > 0 && <span style={{ marginLeft: 6, background: "#F59E0B", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 800 }}>{correctionCount}</span>}
+            </button>
+            <button style={tabStyle("approved")} onClick={() => setTab("approved")}>
+              Approved {approvedCount > 0 && <span style={{ marginLeft: 6, background: "#10B981", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11, fontWeight: 800 }}>{approvedCount}</span>}
             </button>
           </div>
           <div className="table-wrap">
@@ -66,7 +75,9 @@ export default function ReviewQueuePage() {
                   <td data-label="Last updated"><Sm muted>{r.updatedAt.slice(0,16).replace("T"," ")}</Sm></td>
                   <td data-label="Actions">
                     <div style={{ display: "flex", gap: 8 }}>
-                      <Btn variant="primary" size="sm" onClick={() => navigate(`/review/${r.id}`)}>Review</Btn>
+                      {tab !== "approved" && (
+                        <Btn variant="primary" size="sm" onClick={() => navigate(`/review/${r.id}`)}>Review</Btn>
+                      )}
                       <Btn variant="ghost" size="sm" onClick={() => navigate(`/reports/${r.id}`)}>View</Btn>
                     </div>
                   </td>
@@ -76,7 +87,9 @@ export default function ReviewQueuePage() {
                 <tr><td colSpan={5} style={{ textAlign: "center", padding: "48px", color: "var(--text-3)" }}>
                   <div style={{ fontSize: 32, marginBottom: 10 }}>✓</div>
                   <div style={{ fontWeight: 700, fontSize: 15, color: "var(--text-2)" }}>Queue clear</div>
-                  <div style={{ fontSize: 13, marginTop: 4 }}>No reports awaiting {tab === "submitted" ? "review" : "re-submission"}.</div>
+                  <div style={{ fontSize: 13, marginTop: 4 }}>
+                    {tab === "submitted" ? "No reports awaiting review." : tab === "needs_correction" ? "No reports awaiting re-submission." : "No approved reports."}
+                  </div>
                 </td></tr>
               )}
             </tbody>

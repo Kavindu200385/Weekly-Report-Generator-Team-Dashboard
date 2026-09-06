@@ -59,11 +59,27 @@ async function get<T>(path: string, params?: Record<string, string | number>): P
   }
 }
 
-export const getDashboardSummary = (week: string) => get<DashboardSummary>("/dashboard/summary", { week });
+export interface DashboardFilter {
+  userId?: number;
+  projectId?: number;
+}
+
+function withFilter(base: Record<string, string | number>, filter?: DashboardFilter) {
+  return {
+    ...base,
+    ...(filter?.userId ? { userId: filter.userId } : {}),
+    ...(filter?.projectId ? { projectId: filter.projectId } : {}),
+  };
+}
+
+export const getDashboardSummary = (week: string, filter?: DashboardFilter) =>
+  get<DashboardSummary>("/dashboard/summary", withFilter({ week }, filter));
 export const getTeamStatus = (week: string) => get<TeamStatusRow[]>("/dashboard/team-status", { week });
 export const getTasksTrend = (weeks = 8) => get<TasksTrendPoint[]>("/dashboard/tasks-trend", { weeks });
-export const getWorkloadByProject = (week: string) => get<WorkloadByProjectRow[]>("/dashboard/workload-by-project", { week });
-export const getTimeByType = (week: string) => get<TimeByTypeRow[]>("/dashboard/time-by-type", { week });
+export const getWorkloadByProject = (week: string, filter?: DashboardFilter) =>
+  get<WorkloadByProjectRow[]>("/dashboard/workload-by-project", withFilter({ week }, filter));
+export const getTimeByType = (week: string, filter?: DashboardFilter) =>
+  get<TimeByTypeRow[]>("/dashboard/time-by-type", withFilter({ week }, filter));
 export const getActivityFeed = (limit = 10) => get<ActivityFeedEntry[]>("/dashboard/activity-feed", { limit });
-export const getSectionView = (week: string, section: "blockers" | "achievements") =>
-  get<SectionViewEntry[]>("/dashboard/section-view", { week, section });
+export const getSectionView = (week: string, section: "blockers" | "achievements", filter?: DashboardFilter) =>
+  get<SectionViewEntry[]>("/dashboard/section-view", withFilter({ week, section }, filter));

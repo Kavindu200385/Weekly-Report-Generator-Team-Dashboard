@@ -35,10 +35,14 @@ const TIME_TYPE_COLORS: Record<string, string> = {
 };
 
 function thisMonday(): string {
+  return mondaysAgo(0);
+}
+
+function mondaysAgo(n: number): string {
   const today = new Date();
   const day = today.getDay();
   const monday = new Date(today);
-  monday.setDate(today.getDate() - ((day + 6) % 7));
+  monday.setDate(today.getDate() - ((day + 6) % 7) - n * 7);
   return monday.toISOString().slice(0, 10);
 }
 
@@ -72,7 +76,10 @@ export default function ManagerDashboardPage() {
     }
   };
 
-  const [week, setWeek] = useState(thisMonday());
+  // Default to a full month window (week..weekEnd) so a manager filtering to
+  // one member sees their recent history, not just the current week —
+  // narrowing both fields to the same date still shows exactly one week.
+  const [week, setWeek] = useState(mondaysAgo(4));
   const [weekEnd, setWeekEnd] = useState(thisMonday());
   const [activeTab, setActiveTab] = useState<"table" | "blockers" | "achievements">("table");
   const [memberFilter, setMemberFilter] = useState<number | "all">("all");
@@ -84,11 +91,19 @@ export default function ManagerDashboardPage() {
   const cardCols = isMobile ? 1 : isTablet ? 2 : 4;
   const chartCols = isMobile || isTablet ? 1 : 2;
 
-  const { data: summary } = useDashboardSummary(week);
-  const { data: teamStatus = [] } = useTeamStatus(week);
+  const dashboardFilter = {
+    userId: memberFilter !== "all" ? memberFilter : undefined,
+    projectId: projectFilter !== "all" ? projectFilter : undefined,
+  };
+
+  // These describe "current status as of the most recent week in view" —
+  // keyed on weekEnd (not week/range-start), so they track today's week by
+  // default even though the visible range (week..weekEnd) spans further back.
+  const { data: summary } = useDashboardSummary(weekEnd, dashboardFilter);
+  const { data: teamStatus = [] } = useTeamStatus(weekEnd);
   const { data: trend = [] } = useTasksTrend(8);
-  const { data: workload = [] } = useWorkloadByProject(week);
-  const { data: timeByType = [] } = useTimeByType(week);
+  const { data: workload = [] } = useWorkloadByProject(weekEnd, { userId: dashboardFilter.userId });
+  const { data: timeByType = [] } = useTimeByType(weekEnd, dashboardFilter);
   const { data: activities = [] } = useActivityFeed(10);
   const { data: members = [] } = useUsers({ role: "member" });
   const { data: projects = [] } = useProjects();
@@ -100,23 +115,34 @@ export default function ManagerDashboardPage() {
     ...(projectFilter !== "all" ? { projectId: projectFilter } : {}),
     ...(statusFilter !== "all" && statusFilter !== "not_started" ? { status: statusFilter } : {}),
   });
-  const { data: blockersView = [] } = useSectionView(week, "blockers");
-  const { data: achievementsView = [] } = useSectionView(week, "achievements");
+  const { data: blockersView = [] } = useSectionView(weekEnd, "blockers", dashboardFilter);
+  const { data: achievementsView = [] } = useSectionView(weekEnd, "achievements", dashboardFilter);
 
   const teamReports = statusFilter === "not_started" ? [] : (teamReportsData?.data ?? []);
   let notStarted = teamStatus.filter(m => m.status === "not_started");
   if (statusFilter !== "all" && statusFilter !== "not_started") notStarted = [];
   if (memberFilter !== "all") notStarted = notStarted.filter(m => m.userId === memberFilter);
-  const activeFilterCount = [memberFilter, projectFilter, statusFilter].filter(v => v !== "all").length
-    + (weekEnd !== week ? 1 : 0);
+  const activeFilterCount = [memberFilter, projectFilter, statusFilter].filter(v => v !== "all").length;
 
-  const memberStats = teamStatus.map(m => ({
-    name: m.name,
-    approved: m.status === "approved" ? 1 : 0,
-    submitted: m.status === "submitted" ? 1 : 0,
-    correction: m.status === "needs_correction" ? 1 : 0,
-    draft: m.status === "draft" ? 1 : 0,
-  }));
+  // Nothing stops a member from having more than one report in the
+  // selected date range (different projects, or just multiple weeks once
+  // "through" is widened) — so this must count every matching report per
+  // member/status, not assume a single report per member. teamReportsData
+  // already carries every report in range (respecting the same
+  // member/project/status filters as the table below), so it's the real
+  // source of truth here instead of teamStatus's one-report-per-week view.
+  const memberStats = members
+    .filter(m => memberFilter === "all" || m.id === memberFilter)
+    .map(m => {
+      const reportsForMember = teamReports.filter(r => r.user?.id === m.id);
+      return {
+        name: m.name,
+        approved: reportsForMember.filter(r => r.status === "approved").length,
+        submitted: reportsForMember.filter(r => r.status === "submitted").length,
+        correction: reportsForMember.filter(r => r.status === "needs_correction").length,
+        draft: reportsForMember.filter(r => r.status === "draft").length,
+      };
+    });
 
   // t.week comes back as a full ISO datetime (a raw GROUP BY on a DATE
   // column) rather than a plain date — truncated for display; a possible
@@ -135,7 +161,7 @@ export default function ManagerDashboardPage() {
 
   return (
     <div style={{ flex: 1, overflow: "auto" }}>
-      <PageHeader title="Manager Dashboard" sub={`Week of ${week} · ${teamStatus.length} team members`} action={
+      <PageHeader title="Manager Dashboard" sub={`As of week of ${weekEnd} · ${teamStatus.length} team members`} action={
         isMobile ? (
           <button onClick={() => setFiltersOpen(true)} style={{ display: "flex", alignItems: "center", gap: 6, minHeight: 44, padding: "0 16px", background: "var(--accent-bg)", color: "var(--accent)", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, fontFamily: "inherit", cursor: "pointer" }}>
             Filters{activeFilterCount > 0 && <span style={{ background: "var(--accent)", color: "#fff", borderRadius: 10, padding: "1px 7px", fontSize: 11 }}>{activeFilterCount}</span>}

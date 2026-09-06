@@ -7,6 +7,11 @@ export function useTeamReports(filter: ReportFilter = {}) {
   return useQuery({
     queryKey: ["reports", "team", filter],
     queryFn: () => getTeamReports(filter),
+    // Mutation-triggered invalidation only reaches the browser tab that made
+    // the change — a manager watching this in one session won't otherwise
+    // learn a different member just submitted from their own session. Poll
+    // so a fresh submission shows up within a few seconds either way.
+    refetchInterval: 15000,
   });
 }
 

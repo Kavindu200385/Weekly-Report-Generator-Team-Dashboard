@@ -35,17 +35,25 @@ export class DashboardService {
     );
   }
 
-  async getSummary(week: string) {
+  async getSummary(week: string, userId?: number, projectId?: number) {
     // "Submitted" means the report has been through submission at least
     // once this week — draft (never submitted) must not count, but
     // needs_correction/approved were submitted and stay counted.
     const totalSubmitted = await this.reportRepo.count({
-      where: { weekStartDate: week, status: Not(ReportStatus.DRAFT) },
+      where: {
+        weekStartDate: week,
+        status: Not(ReportStatus.DRAFT),
+        ...(userId ? { userId } : {}),
+        ...(projectId ? { projectId } : {}),
+      },
     });
 
     const activeMemberCount = await this.userRepo.count({
       where: { role: UserRole.MEMBER, isActive: true },
     });
+    // complianceRate/pendingCount/lateCount stay whole-team — they describe
+    // the team's overall submission rate, a concept that doesn't narrow
+    // meaningfully to a single member/project.
     const complianceRate = activeMemberCount > 0
       ? Math.round((totalSubmitted / activeMemberCount) * 100)
       : 0;
@@ -60,12 +68,17 @@ export class DashboardService {
     const lateCount = weekHasEnded ? notSubmittedCount : 0;
 
     const needsCorrectionCount = await this.reportRepo.count({
-      where: { weekStartDate: week, status: ReportStatus.NEEDS_CORRECTION },
+      where: {
+        weekStartDate: week,
+        status: ReportStatus.NEEDS_CORRECTION,
+        ...(userId ? { userId } : {}),
+        ...(projectId ? { projectId } : {}),
+      },
     });
 
     // "Open" blockers means still-outstanding — once a report is approved
     // its blockers are resolved for dashboard purposes, so they're excluded.
-    const openBlockersCount = await this.restrictToLatestVersion(
+    let openBlockersQb = this.restrictToLatestVersion(
       this.blockerRepo
         .createQueryBuilder('blocker')
         .innerJoin('blocker.reportVersion', 'version')
@@ -73,7 +86,10 @@ export class DashboardService {
         .where('report.weekStartDate = :week', { week })
         .andWhere('report.status != :approved', { approved: ReportStatus.APPROVED }),
       'version',
-    ).getCount();
+    );
+    if (userId) openBlockersQb = openBlockersQb.andWhere('report.userId = :userId', { userId });
+    if (projectId) openBlockersQb = openBlockersQb.andWhere('report.projectId = :projectId', { projectId });
+    const openBlockersCount = await openBlockersQb.getCount();
 
     return { totalSubmitted, complianceRate, pendingCount, lateCount, needsCorrectionCount, openBlockersCount };
   }
@@ -116,8 +132,8 @@ export class DashboardService {
     return rows.reverse().map((r) => ({ week: r.week, count: Number(r.count) }));
   }
 
-  async getWorkloadByProject(week: string) {
-    const rows = await this.restrictToLatestVersion(
+  async getWorkloadByProject(week: string, userId?: number) {
+    let qb = this.restrictToLatestVersion(
       this.taskRepo
         .createQueryBuilder('task')
         .innerJoin('task.reportVersion', 'version')
@@ -125,7 +141,10 @@ export class DashboardService {
         .innerJoin('report.project', 'project')
         .where('report.weekStartDate = :week', { week }),
       'version',
-    )
+    );
+    if (userId) qb = qb.andWhere('report.userId = :userId', { userId });
+
+    const rows = await qb
       .select('project.id', 'projectId')
       .addSelect('project.name', 'projectName')
       .addSelect('COUNT(task.id)', 'taskCount')
@@ -142,15 +161,19 @@ export class DashboardService {
     }));
   }
 
-  async getTimeByType(week: string) {
-    const rows = await this.restrictToLatestVersion(
+  async getTimeByType(week: string, userId?: number, projectId?: number) {
+    let qb = this.restrictToLatestVersion(
       this.hoursRepo
         .createQueryBuilder('hours')
         .innerJoin('hours.reportVersion', 'version')
         .innerJoin('version.report', 'report')
         .where('report.weekStartDate = :week', { week }),
       'version',
-    )
+    );
+    if (userId) qb = qb.andWhere('report.userId = :userId', { userId });
+    if (projectId) qb = qb.andWhere('report.projectId = :projectId', { projectId });
+
+    const rows = await qb
       .select('hours.taskType', 'taskType')
       .addSelect('SUM(hours.hours)', 'totalHours')
       .groupBy('hours.taskType')
@@ -192,21 +215,28 @@ export class DashboardService {
       .slice(0, limit);
   }
 
-  async getSectionView(week: string, section: 'blockers' | 'achievements') {
+  async getSectionView(week: string, section: 'blockers' | 'achievements', userId?: number, projectId?: number) {
     const members = await this.userRepo.find({
-      where: { role: UserRole.MEMBER, isActive: true },
+      where: {
+        role: UserRole.MEMBER,
+        isActive: true,
+        ...(userId ? { id: userId } : {}),
+      },
       order: { name: 'ASC' },
     });
 
     if (section === 'blockers') {
-      const rows = await this.restrictToLatestVersion(
+      let qb = this.restrictToLatestVersion(
         this.blockerRepo
           .createQueryBuilder('blocker')
           .innerJoin('blocker.reportVersion', 'version')
           .innerJoin('version.report', 'report')
           .where('report.weekStartDate = :week', { week }),
         'version',
-      )
+      );
+      if (projectId) qb = qb.andWhere('report.projectId = :projectId', { projectId });
+
+      const rows = await qb
         .select('report.userId', 'userId')
         .addSelect('blocker.description', 'description')
         .addSelect('blocker.isKeyIssue', 'isKeyIssue')
@@ -221,14 +251,17 @@ export class DashboardService {
       }));
     }
 
-    const rows = await this.restrictToLatestVersion(
+    let qb = this.restrictToLatestVersion(
       this.achievementRepo
         .createQueryBuilder('achievement')
         .innerJoin('achievement.reportVersion', 'version')
         .innerJoin('version.report', 'report')
         .where('report.weekStartDate = :week', { week }),
       'version',
-    )
+    );
+    if (projectId) qb = qb.andWhere('report.projectId = :projectId', { projectId });
+
+    const rows = await qb
       .select('report.userId', 'userId')
       .addSelect('achievement.description', 'description')
       .addSelect('achievement.isKeyAchievement', 'isKeyAchievement')

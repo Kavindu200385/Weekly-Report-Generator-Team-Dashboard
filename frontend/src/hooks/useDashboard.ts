@@ -7,10 +7,11 @@ import {
   getTimeByType,
   getActivityFeed,
   getSectionView,
+  type DashboardFilter,
 } from "@/api/dashboard.api";
 
-export const useDashboardSummary = (week: string) =>
-  useQuery({ queryKey: ["dashboard", "summary", week], queryFn: () => getDashboardSummary(week) });
+export const useDashboardSummary = (week: string, filter: DashboardFilter = {}) =>
+  useQuery({ queryKey: ["dashboard", "summary", week, filter], queryFn: () => getDashboardSummary(week, filter) });
 
 export const useTeamStatus = (week: string) =>
   useQuery({ queryKey: ["dashboard", "team-status", week], queryFn: () => getTeamStatus(week) });
@@ -18,14 +19,14 @@ export const useTeamStatus = (week: string) =>
 export const useTasksTrend = (weeks = 8) =>
   useQuery({ queryKey: ["dashboard", "tasks-trend", weeks], queryFn: () => getTasksTrend(weeks) });
 
-export const useWorkloadByProject = (week: string) =>
-  useQuery({ queryKey: ["dashboard", "workload-by-project", week], queryFn: () => getWorkloadByProject(week) });
+export const useWorkloadByProject = (week: string, filter: DashboardFilter = {}) =>
+  useQuery({ queryKey: ["dashboard", "workload-by-project", week, filter], queryFn: () => getWorkloadByProject(week, filter) });
 
-export const useTimeByType = (week: string) =>
-  useQuery({ queryKey: ["dashboard", "time-by-type", week], queryFn: () => getTimeByType(week) });
+export const useTimeByType = (week: string, filter: DashboardFilter = {}) =>
+  useQuery({ queryKey: ["dashboard", "time-by-type", week, filter], queryFn: () => getTimeByType(week, filter) });
 
 export const useActivityFeed = (limit = 10) =>
   useQuery({ queryKey: ["dashboard", "activity-feed", limit], queryFn: () => getActivityFeed(limit) });
 
-export const useSectionView = (week: string, section: "blockers" | "achievements") =>
-  useQuery({ queryKey: ["dashboard", "section-view", week, section], queryFn: () => getSectionView(week, section) });
+export const useSectionView = (week: string, section: "blockers" | "achievements", filter: DashboardFilter = {}) =>
+  useQuery({ queryKey: ["dashboard", "section-view", week, section, filter], queryFn: () => getSectionView(week, section, filter) });
