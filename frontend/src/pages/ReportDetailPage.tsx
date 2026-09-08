@@ -50,7 +50,7 @@ export default function ReportDetailPage() {
   return (
     <div style={{ flex: 1, overflow: "auto" }}>
       <PageHeader title={`Report — ${report.weekStartDate}`} sub={`${report.user?.name ?? "?"} · ${report.project?.name ?? "?"}`}
-        action={<div style={{ display: "flex", gap: 8 }}><StatusBadge status={report.status} /><Btn variant="ghost" size="sm" onClick={() => navigate(isManager ? "/dashboard" : "/report-history")}>← Back</Btn></div>} />
+        action={<div style={{ display: "flex", gap: 8 }}><StatusBadge status={report.status} /><Btn variant="ghost" size="sm" onClick={() => navigate(-1)}>← Back</Btn></div>} />
       <div className="page-pad" style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 16 }}>
         {content && <ReportBody content={content} projects={projects.map(p => ({ id: p.id, name: p.name }))} readOnly latestReview={latestReview} />}
 

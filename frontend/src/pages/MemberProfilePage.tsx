@@ -27,7 +27,7 @@ export default function MemberProfilePage() {
 
   return (
     <div style={{ flex: 1, overflow: "auto" }}>
-      <PageHeader title={user.name} sub={user.email} action={<Btn variant="ghost" size="sm" onClick={() => navigate("/dashboard")}>← Back</Btn>} />
+      <PageHeader title={user.name} sub={user.email} action={<Btn variant="ghost" size="sm" onClick={() => navigate(-1)}>← Back</Btn>} />
       <div className="page-pad" style={{ padding: "24px 28px", display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ borderRadius: 16, overflow: "hidden", boxShadow: "var(--shadow)" }}>
           <div style={{ background: `linear-gradient(135deg,${bg} 0%,${bg}CC 100%)`, padding: "28px 28px 24px", display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>

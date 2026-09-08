@@ -32,7 +32,7 @@ export default function ManagerReviewPage() {
   const [vOpen, setVOpen] = useState(false);
   const { data: selectedVersion } = useReportVersion(id, selVersionId);
 
-  const back = () => navigate("/review-queue");
+  const back = () => navigate(-1);
   const isBelowLg = useMediaQuery(MQ.belowLg);
 
   if (!isManager || !report || !id) return null;
