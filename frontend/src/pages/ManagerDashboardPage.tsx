@@ -76,10 +76,10 @@ export default function ManagerDashboardPage() {
     }
   };
 
-  // Default to a full month window (week..weekEnd) so a manager filtering to
-  // one member sees their recent history, not just the current week —
-  // narrowing both fields to the same date still shows exactly one week.
-  const [week, setWeek] = useState(mondaysAgo(4));
+  // Default both ends of the range to the current week — a manager can
+  // still widen "Week starting" manually to see recent history for one
+  // member, but the dashboard should open on today's week, not a month back.
+  const [week, setWeek] = useState(thisMonday());
   const [weekEnd, setWeekEnd] = useState(thisMonday());
   const [activeTab, setActiveTab] = useState<"table" | "blockers" | "achievements">("table");
   const [memberFilter, setMemberFilter] = useState<number | "all">("all");

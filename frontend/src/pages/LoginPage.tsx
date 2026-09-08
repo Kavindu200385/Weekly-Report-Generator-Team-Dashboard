@@ -124,8 +124,11 @@ export default function LoginPage() {
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             {[
-              { label: "Manager", email: "manager@sitrep.test" },
-              { label: "Member", email: "member1@sitrep.test" },
+              { label: "Manager", email: "dilan@sitrep.test" },
+              { label: "Member", email: "hiru@sitrep.test" },
+              { label: "Member", email: "yumin@sitrep.test" },
+              { label: "Member", email: "sewwandi@sitrep.test" },
+              { label: "Member", email: "chathumi@sitrep.test" },
             ].map((acct) => (
               <button
                 key={acct.email}
@@ -133,7 +136,10 @@ export default function LoginPage() {
                 onClick={() => fillDemoAccount(acct.email)}
                 style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "4px 0", background: "none", border: "none", cursor: "pointer" }}
               >
-                <span style={{ fontSize: 11.5, color: "var(--text-2)", fontFamily: "inherit" }}>{acct.email}</span>
+                <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 11.5, color: "var(--text-2)", fontFamily: "inherit" }}>{acct.email}</span>
+                  <span style={{ fontSize: 10.5, color: "var(--text-3)", fontFamily: "monospace" }}>Password123!</span>
+                </span>
                 <span style={{ fontSize: 10, fontWeight: 700, color: acct.label === "Manager" ? "var(--accent)" : "var(--text-3)", background: acct.label === "Manager" ? "var(--accent-bg)" : "#fff", padding: "2px 8px", borderRadius: 10 }}>
                   {acct.label}
                 </span>
@@ -141,7 +147,7 @@ export default function LoginPage() {
             ))}
           </div>
           <div style={{ fontSize: 10.5, color: "var(--text-3)", marginTop: 8, lineHeight: 1.5 }}>
-            Fills email/password (all seeded accounts use <code>Password123!</code>). reCAPTCHA only appears after 3 failed attempts.
+            Click an account to fill its email/password. reCAPTCHA only appears after 3 failed attempts.
           </div>
         </div>
       )}
